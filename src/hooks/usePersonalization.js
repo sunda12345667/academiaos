@@ -12,8 +12,15 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import personalizationEngine from '@/services/ai/personalization.engine';
 
 // Module-level cache: profileId → { profile, computedAt }
+// Cleared on logout via clearPersonalizationCache() called from UserProvider
 const _profileCache = new Map();
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min
+
+/** Called by UserProvider on logout to prevent cross-user data leak (DEBT-007) */
+export function clearPersonalizationCache(profileId = null) {
+  if (profileId) _profileCache.delete(profileId);
+  else _profileCache.clear(); // full clear on logout
+}
 
 export function usePersonalization() {
   const { profile } = useCurrentUser();
