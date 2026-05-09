@@ -420,6 +420,50 @@ Actions: `warning | content_removed | account_suspended | account_banned`
 
 ---
 
+## Infrastructure Layer (`lib/infra/`)
+
+| Module                   | Purpose                                              |
+|--------------------------|------------------------------------------------------|
+| `app-bootstrap.js`       | Boot sequence: logger → perf → events → error guards |
+| `logger.js`              | Structured logs, correlation IDs, remote drain       |
+| `retry.js`               | Exponential backoff, circuit breakers, fallbacks     |
+| `feature-flags.js`       | URL/env/A-B flag evaluation, canary rollout          |
+| `performance.monitor.js` | Timing, Web Vitals, SLO tracking, p95/p99            |
+| `event-queue.js`         | Batched analytics events, DLQ, offline-resilient     |
+
+### Circuit Breakers (pre-built)
+```js
+import { breakers } from '@/lib/infra/retry';
+const data = await breakers.ai.execute(() => aiGateway.invoke(prompt));
+// breakers.ai | .payment | .media | .realtime | .moderation
+```
+
+### Feature Flags
+```js
+import flags from '@/lib/infra/feature-flags';
+if (flags.isEnabled('AI_SMART_FEED', userId)) { ... }
+if (flags.rollout('AI_RECOMMENDATION_V2', userId, 0.10)) { ... } // 10% canary
+// URL override: ?flag_AI_SMART_FEED=true
+// Env override: VITE_FEATURE_AI_SMART_FEED=true
+```
+
+### Performance Tracing
+```js
+import perf, { SLO } from '@/lib/infra/performance.monitor';
+const posts = await perf.trace('feed.home.load', () => feedService.getHomeFeed(userId), {}, SLO.FEED_LOAD);
+const p95 = perf.getPercentile('feed.home.load', 95);
+```
+
+### Event Queue
+```js
+import { eventQueue } from '@/lib/infra/event-queue';
+eventQueue.contentView(postId, 'post', 'feed_home');  // fire-and-forget
+eventQueue.videoWatch(postId, 45, 0.87, 'feed_video');
+eventQueue.paymentInitiated(500000, 'wallet_topup', 'paystack');
+```
+
+---
+
 ## Realtime Scaling Strategy
 
 | Layer | MVP (now) | Scale (future) |

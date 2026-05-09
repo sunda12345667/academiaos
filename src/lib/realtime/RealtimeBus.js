@@ -14,6 +14,8 @@
  */
 
 import { base44 } from '@/api/base44Client';
+import perf from '@/lib/infra/performance.monitor';
+import logger from '@/lib/infra/logger';
 
 // Map<entityName, unsubscribeFn> — live base44 subscriptions
 const activeSubscriptions = new Map();
@@ -27,7 +29,15 @@ const lastEventTime = new Map();
 // ─── Core Dispatch ────────────────────────────────────────────────────────────
 
 function dispatch(entityName, event) {
-  lastEventTime.set(entityName, Date.now());
+  const now = Date.now();
+  const last = lastEventTime.get(entityName);
+  if (last) {
+    const lagMs = now - last;
+    // Only log lag if it's a real event gap (> 100ms, not immediate consecutive events)
+    if (lagMs > 100) perf.increment(`realtime.lag.${entityName}`);
+  }
+  lastEventTime.set(entityName, now);
+  perf.increment(`realtime.event.${entityName}`);
   const entitySubs = subscribers.get(entityName);
   if (!entitySubs) return;
 
@@ -99,7 +109,7 @@ function reconnectStale() {
     const last = lastEventTime.get(entityName) ?? 0;
     // Only restart if we have consumers waiting but subscription may have died
     if (now - last > STALE_THRESHOLD_MS) {
-      console.info(`[RealtimeBus] Reconnecting stale subscription: ${entityName}`);
+      logger.warn('realtime_bus.stale_reconnect', { entityName });
       closeSubscription(entityName);
       openSubscription(entityName);
     }
