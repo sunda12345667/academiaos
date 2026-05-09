@@ -1,162 +1,302 @@
 /**
- * Feed Service
- * 
- * Handles feed construction, ranking, and pagination.
- * 
- * Migration note: On NestJS migration, this becomes a FeedService
- * that queries a PostgreSQL materialized view with Redis caching.
- * The scoring algorithm moves server-side for security and performance.
+ * Feed Service — Intelligent Feed Construction
+ *
+ * Replaces naive chronological queries with a multi-signal ranking pipeline.
+ * Each feed type uses a different signal weight profile (see ranking.engine.js).
+ *
+ * Feed architecture:
+ *   home     → blended (following 50% + discover 30% + trending 20%) → ranked
+ *   discover → platform-wide trending → ranked by viral velocity
+ *   following → fan-out from followed authors → ranked by social relevance
+ *   video    → short_video type only → ranked by watch-time + velocity
+ *   group    → group-scoped posts → ranked by recency + engagement
+ *   profile  → author-scoped posts → chronological (profiles are portfolios)
+ *   live     → active live sessions → ranked by viewer count
+ *   saved    → saved posts by user → chronological
+ *
+ * Context enrichment:
+ *   viewerProfile, followingIds, subjectInterests, watchHistory, creatorTrustMap
+ *   are loaded once per feed request and passed to the ranking engine.
+ *
+ * Migration note:
+ *   On NestJS: FeedService calls a PostgreSQL materialized view pre-ranked server-side.
+ *   Context enrichment becomes JOIN clauses. Blending becomes UNION ALL + LIMIT.
+ *   Redis caches ranked feed per user with 30s TTL.
  */
 
 import { base44 } from '@/api/base44Client';
+import rankingEngine from './ranking.engine';
 
-// ─── Feed Scoring Constants ───────────────────────────────────────────────────
-// These weights simulate an algorithmic feed ranking system
-// Future: Move to server-side ML-based scoring
-const ENGAGEMENT_WEIGHTS = {
-  view: 1,
-  like: 3,
-  comment: 5,
-  share: 7,
-  save: 4,
-};
-
-// Time decay factor: posts older than this lose score rapidly
-const HALF_LIFE_HOURS = 6;
+// ─── Feed Context Loading ─────────────────────────────────────────────────────
 
 /**
- * Compute engagement score for a post
- * This is a simplified Wilson score approximation
+ * Load enrichment context for the ranking engine.
+ * Batch-loads all signals needed to rank content for a viewer.
+ * Future: Single materialized view query, not N+1 parallel fetches.
  */
-function computeEngagementScore(post) {
-  const raw =
-    (post.view_count || 0) * ENGAGEMENT_WEIGHTS.view +
-    (post.like_count || 0) * ENGAGEMENT_WEIGHTS.like +
-    (post.comment_count || 0) * ENGAGEMENT_WEIGHTS.comment +
-    (post.share_count || 0) * ENGAGEMENT_WEIGHTS.share +
-    (post.save_count || 0) * ENGAGEMENT_WEIGHTS.save;
+async function loadRankingContext(viewerProfileId) {
+  if (!viewerProfileId) return {};
 
-  const ageHours = (Date.now() - new Date(post.created_date).getTime()) / (1000 * 60 * 60);
-  const decayFactor = Math.pow(0.5, ageHours / HALF_LIFE_HOURS);
+  try {
+    const [profiles, follows, academicId] = await Promise.all([
+      base44.entities.UserProfile.filter({ id: viewerProfileId }),
+      base44.entities.Follow.filter({ follower_id: viewerProfileId, status: 'active' }, '-created_date', 500),
+      base44.entities.AcademicIdentity.filter({ user_id: viewerProfileId }),
+    ]);
 
-  return raw * decayFactor;
+    const viewerProfile = profiles[0] ?? null;
+    const followingIds = new Set(follows.map(f => f.following_id));
+    const subjectInterests = [
+      ...(academicId[0]?.subjects || []),
+      ...(viewerProfile?.preferences?.subject_interests || []),
+    ];
+
+    // Load creator trust scores (cap at 50 profiles to bound query cost)
+    const authorIds = [...followingIds].slice(0, 50);
+    const creatorProfiles = authorIds.length
+      ? await base44.entities.CreatorProfile.filter({ user_id: authorIds[0] }, '-trust_score', 50).catch(() => [])
+      : [];
+
+    const creatorTrustMap = new Map(creatorProfiles.map(c => [c.user_id, c.trust_score ?? 50]));
+
+    return { viewerProfile, followingIds, subjectInterests, creatorTrustMap, watchHistory: new Map() };
+  } catch {
+    return {};
+  }
+}
+
+// ─── Feed Builders ────────────────────────────────────────────────────────────
+
+/**
+ * Home feed: blended following + discover + trending streams
+ */
+async function getHomeFeed(viewerProfileId, { limit = 20 } = {}) {
+  const context = await loadRankingContext(viewerProfileId);
+  const fetchLimit = limit * 3; // Oversample for ranking quality
+
+  // Parallel stream fetching
+  const [followingPosts, discoverPosts, trendingPosts] = await Promise.all([
+    _fetchFollowingPosts(viewerProfileId, context.followingIds, fetchLimit).catch(() => []),
+    _fetchDiscoverPosts(Math.ceil(fetchLimit * 0.6)).catch(() => []),
+    _fetchTrendingPosts(Math.ceil(fetchLimit * 0.4)).catch(() => []),
+  ]);
+
+  // Rank each stream independently with appropriate weight profiles
+  const rankedFollowing = rankingEngine.rankPosts(followingPosts, 'following', context);
+  const rankedDiscover  = rankingEngine.rankPosts(discoverPosts,  'discover',  context);
+  const rankedTrending  = rankingEngine.rankPosts(trendingPosts,  'discover',  context);
+
+  // Blend: 50% following, 30% discover, 20% trending
+  const blended = rankingEngine.blendFeedStreams([
+    { posts: rankedFollowing, weight: 0.50 },
+    { posts: rankedDiscover,  weight: 0.30 },
+    { posts: rankedTrending,  weight: 0.20 },
+  ], limit);
+
+  return { posts: blended, hasMore: blended.length === limit };
 }
 
 /**
- * Get personalized feed for a user
- * MVP: Follows + trending + subject matching
- * Future: ML-ranked feed with collaborative filtering
+ * Discover feed: platform-wide trending content ranked by viral velocity
  */
-async function getPersonalizedFeed(userId, { page = 1, limit = 20, feedType = 'home' } = {}) {
-  const skip = (page - 1) * limit;
+async function getDiscoverFeed(viewerProfileId, { limit = 20 } = {}) {
+  const [context, rawPosts] = await Promise.all([
+    loadRankingContext(viewerProfileId),
+    _fetchDiscoverPosts(limit * 2),
+  ]);
 
-  if (feedType === 'following') {
-    // Fetch follows first, then pull posts in parallel per author (bounded)
-    // Future: Single JOIN query in PostgreSQL with a materialized feed table
-    const follows = await base44.entities.Follow.filter({ follower_id: userId, status: 'active' });
-    const followingIds = follows.map(f => f.following_id);
+  // Sort by viral velocity first, then re-rank with full signals
+  const velocitySorted = rawPosts
+    .map(p => ({ ...p, _velocity: rankingEngine.computeViralVelocity(p) }))
+    .sort((a, b) => b._velocity - a._velocity)
+    .slice(0, limit * 1.5);
 
-    if (!followingIds.length) return { posts: [], hasMore: false, page };
+  const ranked = rankingEngine.rankPosts(velocitySorted, 'discover', context);
+  return { posts: ranked.slice(0, limit), hasMore: rawPosts.length >= limit * 2 };
+}
 
-    // Fan-out: fetch recent posts from each followed user, cap at 5 authors to limit concurrency
-    // Future: Replace with a server-side fan-in aggregation query
-    const authorSlice = followingIds.slice(0, 5);
-    const perAuthorLimit = Math.ceil(limit / authorSlice.length) + 2;
+/**
+ * Following feed: posts from followed users ranked by social relevance
+ */
+async function getFollowingFeed(viewerProfileId, { limit = 20 } = {}) {
+  const context = await loadRankingContext(viewerProfileId);
+  const followingIds = context.followingIds ?? new Set();
 
-    const authorPostArrays = await Promise.all(
-      authorSlice.map(authorId =>
-        base44.entities.Post.filter(
-          { author_id: authorId, status: 'published', visibility: 'public', moderation_status: 'clean' },
-          '-created_date',
-          perAuthorLimit
-        ).catch(() => [])
-      )
-    );
+  if (!followingIds.size) return { posts: [], hasMore: false };
 
-    // Merge and sort by engagement score, deduplicate by ID
-    const seen = new Set();
-    const merged = authorPostArrays
-      .flat()
-      .filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; })
-      .sort((a, b) => (b.engagement_score ?? 0) - (a.engagement_score ?? 0))
-      .slice(skip, skip + limit);
+  const rawPosts = await _fetchFollowingPosts(viewerProfileId, followingIds, limit * 2);
+  const ranked = rankingEngine.rankPosts(rawPosts, 'following', context);
+  return { posts: ranked.slice(0, limit), hasMore: rawPosts.length >= limit * 2 };
+}
 
-    return { posts: merged, hasMore: merged.length === limit, page };
-  }
-
-  if (feedType === 'discover') {
-    // Trending posts platform-wide
-    const posts = await base44.entities.Post.filter(
-      { status: 'published', visibility: 'public', moderation_status: 'clean' },
+/**
+ * Video feed: short_video posts ranked by watch-time completion + velocity
+ * TikTok-style: each video fills the viewport, optimized for completion.
+ */
+async function getVideoFeed(viewerProfileId, { limit = 15 } = {}) {
+  const [context, rawPosts] = await Promise.all([
+    loadRankingContext(viewerProfileId),
+    base44.entities.Post.filter(
+      { type: 'short_video', status: 'published', visibility: 'public', moderation_status: 'clean' },
       '-engagement_score',
-      limit
-    );
-    return { posts, hasMore: posts.length === limit, page };
-  }
+      limit * 3
+    ),
+  ]);
 
-  // Home feed: blended approach
-  const posts = await base44.entities.Post.filter(
-    { status: 'published', visibility: 'public', moderation_status: 'clean' },
-    '-created_date',
-    limit
-  );
-
-  return { posts, hasMore: posts.length === limit, page };
+  const ranked = rankingEngine.rankPosts(rawPosts, 'video', context);
+  return { posts: ranked.slice(0, limit), hasMore: rawPosts.length >= limit * 3 };
 }
 
 /**
- * Get short video (TikTok-style) feed
- * Future: Dedicated video ranking pipeline with watch-time signals
+ * Group feed: group-scoped posts ranked by recency + engagement
  */
-async function getVideoFeed({ page = 1, limit = 10 } = {}) {
-  const posts = await base44.entities.Post.filter(
-    { type: 'short_video', status: 'published', visibility: 'public', moderation_status: 'clean' },
-    '-engagement_score',
-    limit
-  );
-  return { posts, hasMore: posts.length === limit, page };
+async function getGroupFeed(groupId, viewerProfileId, { limit = 20 } = {}) {
+  const [context, rawPosts] = await Promise.all([
+    loadRankingContext(viewerProfileId),
+    base44.entities.Post.filter(
+      { group_id: groupId, status: 'published', moderation_status: 'clean' },
+      '-created_date',
+      limit * 2
+    ),
+  ]);
+
+  const ranked = rankingEngine.rankPosts(rawPosts, 'group', context);
+  return { posts: ranked.slice(0, limit), hasMore: rawPosts.length >= limit * 2 };
 }
 
 /**
- * Get posts for a specific group feed
+ * Profile feed: user's published posts (portfolio view — chronological)
  */
-async function getGroupFeed(groupId, { page = 1, limit = 20 } = {}) {
-  const posts = await base44.entities.Post.filter(
-    { group_id: groupId, status: 'published', moderation_status: 'clean' },
-    '-created_date',
-    limit
-  );
-  return { posts, hasMore: posts.length === limit, page };
-}
-
-/**
- * Get posts by a specific user (profile wall)
- */
-async function getUserFeed(authorId, { page = 1, limit = 20, viewerRole = 'student' } = {}) {
+async function getUserFeed(authorId, { limit = 20 } = {}) {
   const posts = await base44.entities.Post.filter(
     { author_id: authorId, status: 'published', moderation_status: 'clean' },
     '-created_date',
     limit
   );
-  return { posts, hasMore: posts.length === limit, page };
+  return { posts, hasMore: posts.length === limit };
 }
 
 /**
- * Update engagement score on a post after interaction
- * Future: This becomes a background job / queue task
+ * Live feed: active live sessions ordered by viewer count
  */
+async function getLiveFeed({ schoolId, limit = 10 } = {}) {
+  const filter = { status: 'live' };
+  if (schoolId) filter.school_id = schoolId;
+
+  const sessions = await base44.entities.LiveSession.filter(filter, '-current_viewer_count', limit);
+  return { sessions, hasMore: sessions.length === limit };
+}
+
+/**
+ * Saved posts feed for a user
+ */
+async function getSavedFeed(viewerProfileId, { limit = 20 } = {}) {
+  const saved = await base44.entities.PostInteraction.filter(
+    { user_id: viewerProfileId, type: 'save' },
+    '-created_date',
+    limit
+  );
+  if (!saved.length) return { posts: [], hasMore: false };
+
+  const postIds = saved.map(s => s.post_id);
+  // Hydrate posts — bounded by saved list size
+  const posts = await Promise.all(
+    postIds.slice(0, limit).map(id =>
+      base44.entities.Post.filter({ id }).then(r => r[0]).catch(() => null)
+    )
+  );
+  return { posts: posts.filter(Boolean), hasMore: saved.length === limit };
+}
+
+// ─── Private Fetchers ─────────────────────────────────────────────────────────
+
+async function _fetchFollowingPosts(viewerProfileId, followingIds, limit) {
+  if (!followingIds.size) return [];
+
+  // Fan-out across followed authors (cap at 8 to bound concurrency)
+  const authorSlice = [...followingIds].slice(0, 8);
+  const perAuthor = Math.ceil(limit / authorSlice.length) + 3;
+
+  const arrays = await Promise.all(
+    authorSlice.map(authorId =>
+      base44.entities.Post.filter(
+        { author_id: authorId, status: 'published', visibility: 'public', moderation_status: 'clean' },
+        '-created_date',
+        perAuthor
+      ).catch(() => [])
+    )
+  );
+
+  // Deduplicate
+  const seen = new Set();
+  return arrays.flat().filter(p => {
+    if (seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+}
+
+async function _fetchDiscoverPosts(limit) {
+  return base44.entities.Post.filter(
+    { status: 'published', visibility: 'public', moderation_status: 'clean' },
+    '-engagement_score',
+    limit
+  );
+}
+
+async function _fetchTrendingPosts(limit) {
+  // 24h window: fetch recent posts and sort by velocity
+  const recent = await base44.entities.Post.filter(
+    { status: 'published', visibility: 'public', moderation_status: 'clean' },
+    '-created_date',
+    limit * 3
+  );
+  return recent
+    .map(p => ({ ...p, _velocity: rankingEngine.computeViralVelocity(p) }))
+    .sort((a, b) => b._velocity - a._velocity)
+    .slice(0, limit);
+}
+
+// ─── Engagement Score Update ──────────────────────────────────────────────────
+
 async function updatePostEngagement(postId) {
-  const post = await base44.entities.Post.filter({ id: postId });
-  if (!post.length) return;
-  const score = computeEngagementScore(post[0]);
+  const posts = await base44.entities.Post.filter({ id: postId });
+  if (!posts.length) return;
+
+  const post = posts[0];
+  const rawEngagement =
+    (post.view_count   || 0) * INTERACTION_WEIGHTS_EXPORT.view +
+    (post.like_count   || 0) * INTERACTION_WEIGHTS_EXPORT.like +
+    (post.comment_count|| 0) * INTERACTION_WEIGHTS_EXPORT.comment +
+    (post.share_count  || 0) * INTERACTION_WEIGHTS_EXPORT.share +
+    (post.save_count   || 0) * INTERACTION_WEIGHTS_EXPORT.save;
+
+  const ageHours = (Date.now() - new Date(post.created_date).getTime()) / 3_600_000;
+  const decay = Math.pow(0.5, ageHours / 8);
+  const score = Math.round(rawEngagement * decay);
+
   await base44.entities.Post.update(postId, { engagement_score: score });
 }
 
-export default {
-  getPersonalizedFeed,
+const INTERACTION_WEIGHTS_EXPORT = { view: 1, like: 4, comment: 8, share: 10, save: 6 };
+
+const feedService = {
+  getHomeFeed,
+  getDiscoverFeed,
+  getFollowingFeed,
   getVideoFeed,
   getGroupFeed,
   getUserFeed,
+  getLiveFeed,
+  getSavedFeed,
   updatePostEngagement,
-  computeEngagementScore,
+  loadRankingContext,
+  // Legacy compat
+  getPersonalizedFeed: (userId, { feedType = 'home', limit = 20 } = {}) => {
+    if (feedType === 'following') return getFollowingFeed(userId, { limit });
+    if (feedType === 'discover')  return getDiscoverFeed(userId, { limit });
+    return getHomeFeed(userId, { limit });
+  },
 };
+
+export default feedService;

@@ -44,13 +44,19 @@ export function useFeed(feedType = 'home', { userId, groupId } = {}) {
     try {
       let result;
       if (ft === 'video') {
-        result = await feedService.getVideoFeed({ page: pageNum });
+        result = await feedService.getVideoFeed(uid, { limit: 15 });
       } else if (ft === 'group' && gid) {
-        result = await feedService.getGroupFeed(gid, { page: pageNum });
+        result = await feedService.getGroupFeed(gid, uid, { limit: 20 });
       } else if (ft === 'profile' && uid) {
-        result = await feedService.getUserFeed(uid, { page: pageNum });
+        result = await feedService.getUserFeed(uid, { limit: 20 });
+      } else if (ft === 'following') {
+        result = await feedService.getFollowingFeed(uid, { limit: 20 });
+      } else if (ft === 'discover') {
+        result = await feedService.getDiscoverFeed(uid, { limit: 20 });
+      } else if (ft === 'saved') {
+        result = await feedService.getSavedFeed(uid, { limit: 20 });
       } else {
-        result = await feedService.getPersonalizedFeed(uid, { page: pageNum, feedType: ft });
+        result = await feedService.getHomeFeed(uid, { limit: 20 });
       }
 
       setPosts(prev => reset ? result.posts : [...prev, ...result.posts]);

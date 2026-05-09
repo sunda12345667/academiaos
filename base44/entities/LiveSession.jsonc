@@ -1,0 +1,186 @@
+{
+  "name": "LiveSession",
+  "type": "object",
+  "properties": {
+    "host_id": {
+      "type": "string",
+      "description": "UserProfile ID of the host/streamer"
+    },
+    "host_username": {
+      "type": "string"
+    },
+    "host_avatar_url": {
+      "type": "string"
+    },
+    "co_host_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "UserProfile IDs of co-hosts"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "thumbnail_url": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "lecture",
+        "broadcast",
+        "qa_session",
+        "classroom",
+        "study_room",
+        "creator_stream"
+      ],
+      "default": "broadcast"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "live",
+        "ended",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "followers",
+        "group",
+        "course",
+        "private"
+      ],
+      "default": "public"
+    },
+    "group_id": {
+      "type": "string"
+    },
+    "course_id": {
+      "type": "string"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "scheduled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    },
+    "peak_viewer_count": {
+      "type": "number",
+      "default": 0
+    },
+    "total_viewer_count": {
+      "type": "number",
+      "default": 0
+    },
+    "current_viewer_count": {
+      "type": "number",
+      "default": 0
+    },
+    "comment_count": {
+      "type": "number",
+      "default": 0
+    },
+    "reaction_count": {
+      "type": "number",
+      "default": 0
+    },
+    "gift_count": {
+      "type": "number",
+      "default": 0
+    },
+    "replay_url": {
+      "type": "string",
+      "description": "Post-stream recording URL"
+    },
+    "replay_post_id": {
+      "type": "string",
+      "description": "Linked Post if replay was published"
+    },
+    "subject_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "is_monetized": {
+      "type": "boolean",
+      "default": false
+    },
+    "ticket_price": {
+      "type": "number"
+    },
+    "allow_questions": {
+      "type": "boolean",
+      "default": true
+    },
+    "allow_reactions": {
+      "type": "boolean",
+      "default": true
+    },
+    "moderation_mode": {
+      "type": "string",
+      "enum": [
+        "open",
+        "slow",
+        "subscribers_only",
+        "locked"
+      ],
+      "default": "open"
+    },
+    "pinned_comment_id": {
+      "type": "string"
+    },
+    "stream_key": {
+      "type": "string",
+      "description": "External stream provider key"
+    },
+    "stream_provider": {
+      "type": "string",
+      "enum": [
+        "internal",
+        "agora",
+        "livekit",
+        "mux",
+        "100ms"
+      ],
+      "default": "internal"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Provider-specific data"
+    }
+  },
+  "required": [
+    "host_id",
+    "title",
+    "type"
+  ]
+}

@@ -443,6 +443,246 @@ Readiness hooks are in place:
 
 ---
 
+## Content Intelligence & Creator Economy Architecture
+
+### Feed Intelligence Pipeline
+
+```
+User opens feed
+  → feedService.getHomeFeed(viewerProfileId)
+      → loadRankingContext()           ← batch: profile + follows + academic identity + creator trust
+      → _fetchFollowingPosts()         ← fan-out to followed authors (cap 8)
+      → _fetchDiscoverPosts()          ← platform-wide by engagement_score
+      → _fetchTrendingPosts()          ← velocity-sorted (interactions/ageHours)
+      → rankingEngine.rankPosts(stream, 'home', context)  ← multi-signal scoring
+      → rankingEngine.blendFeedStreams([following50%, discover30%, trending20%], 20)
+  → returns ranked, blended, deduplicated posts
+```
+
+### Feed Types & Strategies
+
+| Feed | Strategy | Ranking Signal |
+|---|---|---|
+| `home` | Blended (50/30/20) | engagement velocity + social relevance + subject match |
+| `discover` | Platform-wide | viral velocity (interactions/hour) |
+| `following` | Fan-out from follows | social relevance × recency |
+| `video` | short_video type | watch-time completion + velocity + diversity penalty |
+| `group` | Group-scoped | recency + engagement + subject match |
+| `profile` | Author-scoped | chronological (portfolio) |
+| `live` | Active sessions | viewer count |
+| `saved` | User saves | chronological |
+
+### Ranking Engine Signals (`ranking.engine.js`)
+
+```js
+import rankingEngine from '@/services/feed/ranking.engine';
+
+// Rank posts with full context
+const ranked = rankingEngine.rankPosts(posts, 'home', {
+  viewerProfile,        // UserProfile record
+  followingIds,         // Set<profileId>
+  subjectInterests,     // string[]
+  watchHistory,         // Map<contentId, completionRate>
+  creatorTrustMap,      // Map<authorId, trustScore>
+});
+
+// Blend multiple ranked streams
+const feed = rankingEngine.blendFeedStreams([
+  { posts: followingPosts, weight: 0.5 },
+  { posts: discoverPosts,  weight: 0.3 },
+  { posts: trending,       weight: 0.2 },
+], 20);
+
+// Viral velocity (interactions / age_hours)
+const velocity = rankingEngine.computeViralVelocity(post);
+```
+
+### useFeed Feed Types (updated)
+
+```js
+useFeed('home', { userId })      // Blended algorithmic feed
+useFeed('discover', { userId })  // Trending platform-wide
+useFeed('following', { userId }) // Social graph posts
+useFeed('video', { userId })     // Short video (TikTok-style)
+useFeed('group', { groupId, userId })
+useFeed('profile', { userId })
+useFeed('saved', { userId })     // Bookmarks
+```
+
+---
+
+## Creator Economy
+
+### Creator Tier Progression
+
+```
+none → basic (50 followers, trust ≥ 20)
+     → pro (500 followers, trust ≥ 50)  → monetization unlocked
+     → verified (2000 followers, platform review)
+     → elite (10000 followers, invitation only)
+```
+
+### Trust Score Formula (0–100)
+
+```
+Baseline:                30
++ Account age (days/30): max 10
++ Verification status:   8/15/20
++ Engagement rate (0–15%): max 25
++ Posting streak:        max 10
++ Suspension penalty:    -30
++ Spam score penalty:    max -10
+```
+
+### creator.service.js Surface
+
+```js
+import creatorService from '@/services/creator/creator.service';
+
+await creatorService.getOrCreateCreatorProfile(userProfileId);
+await creatorService.refreshCreatorAnalytics(userProfileId);
+await creatorService.getCreatorDashboard(userProfileId);
+// → { profile, summary, streak, trend[], byType{}, liveSummary }
+await creatorService.enableTips(userProfileId);         // trust ≥ 40
+await creatorService.enableMonetization(userProfileId); // trust ≥ 60, followers ≥ 500
+const creators = await creatorService.getDiscoverCreators(viewerProfileId);
+```
+
+### useCreator Hook
+
+```js
+const {
+  creatorProfile, dashboard, tier, tierMeta, badges, trustScore,
+  isMonetized, tipsEnabled, engagementRate,
+  initCreatorProfile, loadDashboard, refreshAnalytics,
+  enableTips, enableMonetization,
+} = useCreator();
+
+// Read-only for another profile:
+const { creatorProfile, tier, isVerified } = useCreatorProfile(userProfileId);
+```
+
+---
+
+## Live Teaching Architecture
+
+### Session Lifecycle
+
+```
+scheduleLiveSession() → status: 'scheduled'
+  ↓
+startLiveSession()    → status: 'live'
+  → creates linked group Conversation for live chat
+  → notifies all followers (capped at 200)
+  → LiveSessionProvider picks up via RealtimeBus
+  ↓
+[viewers join/leave → viewerJoin() / viewerLeave() → bump counts]
+[host: pinComment(), addCoHost(), setModerationMode()]
+  ↓
+endLiveSession()      → status: 'ended', duration_seconds recorded
+  ↓
+publishReplay()       → creates video Post with replay_url
+```
+
+### Moderation Modes
+
+`open → slow (rate-limited) → subscribers_only → locked`
+
+### useLiveSessionStore Hook
+
+```js
+const {
+  liveSessions, currentSession, isHosting, isLive,
+  joinSession, leaveSession, startSession, endSession, setModerationMode,
+} = useLiveSessionStore();
+```
+
+---
+
+## Watch-Time & Analytics
+
+### useWatchTime Hook
+
+```jsx
+const { startWatch, stopWatch, onVideoTimeUpdate } = useWatchTime(
+  postId, 'post',
+  { source: 'feed_video', contentDuration: 45, autoStart: true }
+);
+// Fires WatchEvent on stop/tab-hide/page-leave (fire-and-forget)
+```
+
+### useImpression Hook (non-video feed cards)
+
+```jsx
+const { ref } = useImpression(postId, { source: 'feed_home', minDuration: 1000 });
+<PostCard ref={ref} /> // Records view after 1s in viewport
+```
+
+### watch.service.js Surface
+
+```js
+await watchService.recordWatchEvent({ userProfileId, contentId, contentType, watchDuration, contentDuration, source });
+watchService.recordImpression(userProfileId, contentId, source); // fire-and-forget
+const history = await watchService.getUserWatchHistory(userProfileId); // Map<contentId, completionRate>
+const avgCompletion = await watchService.getAvgCompletionRate(contentId);
+const creatorStats = await watchService.getCreatorWatchAnalytics(creatorProfileId);
+```
+
+---
+
+## Recommendation Readiness
+
+### Strategy Roster
+
+| Strategy | Signal | Weight |
+|---|---|---|
+| `subject_match` | Academic subjects / tag overlap | 30% |
+| `social_graph` | Posts saved by people you follow | 30% |
+| `creator_affinity` | More from creators you engage with | 25% |
+| `trending` | Viral velocity platform-wide | 15% |
+| `collaborative_filtering` | (stub — future ML model) | — |
+
+### recommendation.service.js Surface
+
+```js
+import recommendationService from '@/services/recommendation/recommendation.service';
+
+const recs = await recommendationService.getRecommendations(userProfileId, { limit: 20 });
+// Each item: { content_id, score, strategy, reason_label, data: Post }
+
+const creatorRecs = await recommendationService.getCreatorRecommendations(userProfileId);
+// Each item: { content_id (profileId), score, strategy }
+```
+
+### ContentRecommendation Entity (feedback loop)
+
+`served → clicked / dismissed` tracked on each served recommendation.
+Click/dismiss signals feed back into strategy weighting (future ML training data).
+
+---
+
+## New Provider Hierarchy (AppShell)
+
+```
+AppShell
+  FeedRealtimeProvider          ← ONE Post subscription
+  NotificationProvider          ← ONE Notification subscription
+  AccountStatusGuard            ← hard-blocks banned/suspended
+  MessagingProvider             ← ONE Message + Conversation subscription
+  LiveSessionProvider           ← ONE LiveSession subscription + viewer management
+```
+
+### New Entities
+
+| Entity | Purpose |
+|---|---|
+| `LiveSession` | Live teaching/broadcast session metadata |
+| `WatchEvent` | Per-user watch duration + completion analytics |
+| `CreatorProfile` | Extended creator stats, tier, monetization, trust |
+| `ContentRecommendation` | Served recommendations + click/dismiss tracking |
+
+---
+
 ## Rules: What Goes Where
 
 | Concern | Location | Rule |

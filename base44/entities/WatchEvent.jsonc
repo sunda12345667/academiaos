@@ -1,0 +1,81 @@
+{
+  "name": "WatchEvent",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "UserProfile ID of the viewer"
+    },
+    "content_id": {
+      "type": "string",
+      "description": "Post ID or LiveSession ID"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "post",
+        "live_session",
+        "course_lesson"
+      ]
+    },
+    "watch_duration_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "How many seconds the user actually watched"
+    },
+    "content_duration_seconds": {
+      "type": "number",
+      "description": "Total duration of the content"
+    },
+    "completion_rate": {
+      "type": "number",
+      "description": "0.0 - 1.0 percentage watched"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Browser/app session identifier"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "feed_home",
+        "feed_discover",
+        "feed_following",
+        "feed_video",
+        "profile",
+        "group",
+        "search",
+        "notification",
+        "direct_link",
+        "live"
+      ],
+      "description": "Where the user found this content"
+    },
+    "device_type": {
+      "type": "string",
+      "enum": [
+        "mobile",
+        "tablet",
+        "desktop"
+      ],
+      "default": "desktop"
+    },
+    "rewatched": {
+      "type": "boolean",
+      "default": false
+    },
+    "exited_at_seconds": {
+      "type": "number",
+      "description": "Second at which user stopped watching (retention curve)"
+    },
+    "fully_watched": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "user_id",
+    "content_id",
+    "content_type"
+  ]
+}

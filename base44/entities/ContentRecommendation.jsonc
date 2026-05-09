@@ -1,0 +1,67 @@
+{
+  "name": "ContentRecommendation",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "UserProfile ID this recommendation is for"
+    },
+    "content_id": {
+      "type": "string"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "post",
+        "live_session",
+        "creator",
+        "group",
+        "course"
+      ]
+    },
+    "score": {
+      "type": "number",
+      "description": "Recommendation confidence 0\u20131"
+    },
+    "strategy": {
+      "type": "string",
+      "enum": [
+        "collaborative_filtering",
+        "content_based",
+        "trending",
+        "social_graph",
+        "subject_match",
+        "creator_affinity",
+        "watch_history"
+      ],
+      "description": "Which algorithm generated this recommendation"
+    },
+    "reason_label": {
+      "type": "string",
+      "description": "Human-readable reason e.g. 'Because you follow @ada'"
+    },
+    "served": {
+      "type": "boolean",
+      "default": false
+    },
+    "clicked": {
+      "type": "boolean",
+      "default": false
+    },
+    "dismissed": {
+      "type": "boolean",
+      "default": false
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_id",
+    "content_id",
+    "content_type",
+    "score",
+    "strategy"
+  ]
+}

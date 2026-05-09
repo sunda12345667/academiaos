@@ -1,0 +1,143 @@
+{
+  "name": "CreatorProfile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Reference to UserProfile ID"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "tagline": {
+      "type": "string"
+    },
+    "niche": {
+      "type": "string",
+      "enum": [
+        "education",
+        "tech",
+        "business",
+        "arts",
+        "science",
+        "sports",
+        "entertainment",
+        "lifestyle",
+        "other"
+      ]
+    },
+    "subject_focus": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Academic/topic specializations"
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "none",
+        "basic",
+        "pro",
+        "verified",
+        "elite"
+      ],
+      "default": "none"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "pending",
+        "verified",
+        "rejected"
+      ],
+      "default": "unverified"
+    },
+    "total_followers": {
+      "type": "number",
+      "default": 0
+    },
+    "total_views": {
+      "type": "number",
+      "default": 0
+    },
+    "total_posts": {
+      "type": "number",
+      "default": 0
+    },
+    "total_live_sessions": {
+      "type": "number",
+      "default": 0
+    },
+    "avg_engagement_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "trust_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0\u2013100 platform trust score (content quality + behavior)"
+    },
+    "monetization_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "tips_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "paid_content_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "subscription_price": {
+      "type": "number"
+    },
+    "total_earnings": {
+      "type": "number",
+      "default": 0
+    },
+    "payout_account": {
+      "type": "object"
+    },
+    "content_quality_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0\u2013100 AI-computed quality signal (future)"
+    },
+    "spam_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0\u2013100 spam likelihood (future ML)"
+    },
+    "badges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "e.g. top_educator, trending_creator, consistent_poster"
+    },
+    "featured_post_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Pinned to creator profile"
+    },
+    "social_links": {
+      "type": "object"
+    },
+    "analytics_opt_in": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_published_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}
