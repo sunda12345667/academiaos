@@ -212,6 +212,237 @@ Computed client-side from `verification_status` (future: server `trust_score`):
 
 ---
 
+## Social Graph Architecture
+
+### Relationship Types
+
+| Type | Entity | Direction | Notes |
+|---|---|---|---|
+| Follow | `Follow` | Directed | `active / pending / blocked / muted / left` |
+| Classmate | `AcademicIdentity` | Implicit | Same school + department + level |
+| Schoolmate | `UserProfile.school_id` | Implicit | Same institution |
+| Group member | `GroupMembership` | Bidirectional | role + status per group |
+| Course student | `AcademicIdentity.courses[]` | Implicit | Enrolled in same course |
+
+### graph.service.js Surface
+
+```js
+import graphService from '@/services/social/graph.service';
+
+// Edge CRUD
+await graphService.followUser(viewerProfileId, targetProfileId);
+await graphService.unfollowUser(viewerProfileId, targetProfileId);
+await graphService.blockUser(viewerProfileId, targetProfileId);
+await graphService.muteUser(viewerProfileId, targetProfileId);
+
+// Edge queries
+const rel = await graphService.getRelationship(viewerProfileId, targetProfileId);
+// rel → { isFollowing, isFollowedBy, isMutual, isBlocked, isMuted, isSelf }
+
+const ids = await graphService.getFollowing(profileId);         // [profileId, ...]
+const ids = await graphService.getBlockedIds(profileId);        // Set<profileId>
+const map = await graphService.batchCheckFollowing(viewer, ids); // { profileId: bool }
+const sugg = await graphService.getSuggestedUsers(profileId);   // profile[]
+```
+
+### useSocialGraph Hook (per-profile reactive)
+
+```jsx
+const { isFollowing, follow, unfollow, isMutual, isBlocked, block, mute } = useSocialGraph(targetProfileId);
+```
+
+---
+
+## Messaging Architecture
+
+### Provider Hierarchy
+
+```
+AppShell
+  └── MessagingProvider          (ONE Message + Conversation subscription)
+       └── ConversationList      → useMessagingStore()
+       └── ConversationView      → useConversation(conversationId)
+```
+
+### Conversation Types
+
+| Type | Use Case |
+|---|---|
+| `direct` | DM between two users |
+| `group` | Group chat (linked to Group via group_id) |
+
+### Delivery State Machine
+
+```
+optimistic (client) → sent (DB) → delivered (recipient opens) → read (conv opened)
+```
+
+### useConversation Hook
+
+```js
+const {
+  messages,     // chronological array
+  isLoading,
+  hasMore,
+  sending,
+  sendMessage,  // { type, content, mediaUrl, ... }
+  toggleReaction, // (messageId, emoji)
+  onTyping,     // call on keydown
+  loadMore,     // infinite scroll trigger
+} = useConversation(conversationId);
+```
+
+### Typing Indicators (ephemeral)
+
+Typing state lives ONLY in `MessagingProvider` ref — never persisted to DB.
+
+```js
+const { setTyping, getTypingUsers } = useMessagingStore();
+const typingUserIds = getTypingUsers(conversationId); // stale after 3s TTL
+```
+
+### Presence (PresenceBus)
+
+```js
+import PresenceBus from '@/lib/realtime/PresenceBus';
+
+PresenceBus.startHeartbeat(profileId);        // on login
+PresenceBus.isOnline(profileId);              // → boolean
+PresenceBus.getPresence(profileId);           // → { online, status, lastSeen }
+PresenceBus.setConversationActive(convId);    // when viewing a conversation
+PresenceBus.setInCall(roomId);               // future: WebRTC
+```
+
+---
+
+## Community / Group System
+
+### Group Roles (descending privilege)
+
+`owner → admin → moderator → member → guest`
+
+### group.service.js Surface
+
+```js
+import groupService from '@/services/community/group.service';
+
+await groupService.createGroup({ name, type, privacy, ownerProfileId });
+await groupService.joinGroup(groupId, profileId);         // auto-approve or pending
+await groupService.leaveGroup(groupId, profileId);
+await groupService.inviteToGroup(groupId, inviterProfileId, targetProfileId);
+await groupService.approveJoinRequest(groupId, modProfileId, targetProfileId);
+await groupService.banMember(groupId, modProfileId, targetProfileId);
+await groupService.promoteMember(groupId, adminProfileId, targetProfileId, newRole);
+await groupService.joinByInviteCode(inviteCode, profileId);
+```
+
+### useGroup Hook
+
+```jsx
+const {
+  group, membership, isMember, isAdmin, canModerate, canPost,
+  join, leave, approveRequest, banMember, promoteMember, loadMembers,
+} = useGroup(groupId);
+```
+
+---
+
+## Engagement Engine
+
+### useEngagement Hook (per-post reactive)
+
+```jsx
+const {
+  liked, saved, voted, counts,
+  like, unlike, save, unsave, vote, share, recordView,
+  toggleLike, toggleSave,      // convenience wrappers
+} = useEngagement(postId, initialPost);
+```
+
+### Scoring Algorithm
+
+`score = Σ(weight × count) × 0.5^(ageHours / 6)`
+
+Weights: view=1, like=3, love=4, insightful=5, comment=6, share=8, save=4
+
+### Trending
+
+```js
+const posts  = await engagementService.getTrendingPosts({ schoolId });
+const topics = await engagementService.getTrendingTopics();
+const streak = await engagementService.getPostingStreak(profileId);
+const summary = await engagementService.getCreatorSummary(profileId);
+```
+
+---
+
+## Notification / Event Propagation
+
+### Dispatch Pattern
+
+All social events use `notification-events.js`:
+
+```js
+import notificationEvents from '@/services/social/notification-events';
+
+// Fire-and-forget — never await in hot paths
+notificationEvents.onPostLiked(actorProfile, postAuthorId, postId).catch(() => {});
+notificationEvents.onPostCommented(actorProfile, postAuthorId, postId, preview).catch(() => {});
+notificationEvents.onUserFollowed(actorProfile, recipientId).catch(() => {});
+notificationEvents.onNewMessage(actorProfile, recipientId, conversationId, preview).catch(() => {});
+notificationEvents.dispatchMentionNotifications(actorProfile, content, postId, mentionedIds).catch(() => {});
+```
+
+Delivery chain: `notification-events → notification.service.createNotification → RealtimeBus → NotificationProvider`
+
+---
+
+## Moderation-Aware Communication
+
+### report.service.js Surface
+
+```js
+import reportService from '@/services/moderation/report.service';
+
+await reportService.submitReport({ reporterProfileId, entityType, entityId, reason });
+await reportService.resolveReport({ reportId, reviewerProfileId, action, targetProfileId });
+await reportService.flagPost(postId, reason);
+await reportService.removePost(postId, moderatorNote);
+const rateCheck = await reportService.checkPostRateLimit(profileId);
+const msgRate   = await reportService.checkMessageRateLimit(profileId, conversationId);
+```
+
+### Action Pipeline
+
+`submitReport → pending → [moderator review] → action_taken | no_action | dismissed`
+
+Actions: `warning | content_removed | account_suspended | account_banned`
+
+---
+
+## Realtime Scaling Strategy
+
+| Layer | MVP (now) | Scale (future) |
+|---|---|---|
+| Feed subscriptions | RealtimeBus (shared per entity) | Kafka consumer groups |
+| Message delivery | RealtimeBus (Message entity) | Dedicated WS gateway |
+| Presence | PresenceBus (client-side heartbeat) | Redis TTL + WS push |
+| Typing indicators | MessagingProvider ref (ephemeral) | Redis pub/sub (never DB) |
+| Notifications | Realtime entity subscription | FCM/APNs + inbox model |
+| Follow graph | PostgreSQL + denormalized counts | Neo4j / graph service |
+| Trending | Client-side score decay | Flink/Spark streaming |
+
+## Future: Voice / Video Collaboration
+
+Readiness hooks are in place:
+- `PresenceBus.setInCall(roomId)` — tracks call status
+- `PresenceBus.getPresence(profileId).status === 'in_call'` — gates call UI
+- `Conversation.type` can be extended with `audio_room | video_room | live_session`
+- WebRTC signaling (offer/answer/ICE) would be sent via the WS gateway as ephemeral events
+- Recording/replay would store media via `UploadFile` and link to a `Post` record
+
+---
+
 ## Rules: What Goes Where
 
 | Concern | Location | Rule |
