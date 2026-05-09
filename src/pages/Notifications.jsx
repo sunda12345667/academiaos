@@ -1,8 +1,7 @@
 /**
  * Notifications — Notification center
  */
-import { useEffect } from 'react';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotificationStore } from '@/providers/NotificationProvider';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,7 @@ const TYPE_ICON = {
 };
 
 export default function Notifications() {
-  const { notifications, loading, unreadCount, markRead, markAllRead } = useNotifications();
+  const { notifications, loading, unreadCount, markRead, markAllRead } = useNotificationStore();
 
   return (
     <div className="max-w-2xl mx-auto w-full">

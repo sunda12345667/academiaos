@@ -1,53 +1,71 @@
-# StudentOS Service Layer
+# StudentOS Frontend Architecture
 
-## Architecture Overview
-
-This directory contains the **business logic abstraction layer** — the boundary between UI components and data infrastructure.
-
-### Migration-Aware Design
-
-Every service in this directory is designed to be **infrastructure-agnostic**. 
-The UI never calls base44 SDK directly. Instead, it calls services here.
-
-When migrating to NestJS + PostgreSQL:
-1. Replace service implementations — NOT the UI
-2. Service contracts (function signatures) remain the same
-3. UI components require zero changes
-
-### Service Modules
+## Provider Tree (outermost → innermost)
 
 ```
-services/
-├── feed/         # Feed ranking, pagination, personalization
-├── user/         # Profile management, follow graph
-├── social/       # Posts, comments, interactions  
-├── groups/       # Community management
-├── messaging/    # Conversations, messages, realtime
-├── academic/     # Courses, enrollment, academic identity
-├── marketplace/  # Listings, search, orders
-├── wallet/       # Balance, transactions, payments
-├── notifications/# Notification dispatch, preferences
-├── moderation/   # Reports, reviews, actions
-├── auth/         # Permission checks, RBAC
-└── media/        # Upload, optimization, processing
+<ErrorBoundary>           — top-level crash catcher
+  <AuthProvider>          — base44 auth state, app public settings
+    <QueryClientProvider> — react-query cache
+      <Router>
+        <UserProvider>    — authenticated user + UserProfile entity
+          <AppShell>
+            <FeedRealtimeProvider>   — ONE Post subscription for ALL feeds
+              <NotificationProvider> — ONE Notification subscription + state
+                <ErrorBoundary>      — route-level crash isolation
+                  <Suspense>
+                    <Outlet />       — lazy-loaded page
 ```
 
-### Naming Conventions
+## Realtime Architecture
 
-- Service files: `camelCase.service.js`  
-- Hook wrappers: `use[ServiceName].js`
-- Each service exports a default object with methods
+**RealtimeBus** (`lib/realtime/RealtimeBus.js`)
+- Singleton event bus with reference-counted entity subscriptions
+- ONE base44 subscription per entity type, regardless of consumer count
+- Automatic teardown when zero consumers remain
+- Event routing: `subscribe(entity, eventType, callback)`
 
-### Example Migration Path
+**FeedRealtimeProvider** (`providers/FeedRealtimeProvider.jsx`)
+- Owns the single Post subscription via RealtimeBus
+- Distributes events to registered feed listeners (home, group, profile feeds)
+- Feed instances register/deregister a listener key — no per-feed subscriptions
 
-Today (Base44):
+**NotificationProvider** (`providers/NotificationProvider.jsx`)
+- Single source of truth for notification list + unread count
+- ONE Notification subscription via RealtimeBus
+- Stable useMemo value — no cascade rerenders
+- `useNotificationStore()` returns safe fallback outside provider
+
+## Context Safety Rules
+
+- `useCurrentUser()` — SAFE hook, returns null defaults if outside provider
+- `useCurrentUserStrict()` — throws only in components guaranteed inside UserProvider
+- `useNotificationStore()` — SAFE hook, returns zero-state outside NotificationProvider
+- All providers expose safe fallbacks to prevent crash during Suspense/lazy-load
+
+## Error Boundary Layers
+
+1. **App-level** (`App.jsx`) — catches auth/router/query catastrophic failures
+2. **Route-level** (`AppShell`) — isolates page crashes, retry resets the route
+3. **Post-level** (`FeedContainer`) — one bad post card can't kill the feed
+4. **Widget-level** (`RightPanel`, `DesktopSidebar`) — sidebar widgets isolated
+
+## Performance Rules
+
+- All context values wrapped in `useMemo` — consumers only rerender on data change
+- All event handlers in hooks wrapped in `useCallback`
+- `PostCard` is `memo()`-wrapped with stable `useCallback` handlers
+- No raw `base44.entities.X.subscribe()` calls in components — use RealtimeBus
+- No `useNotifications()` hooks in individual components — use `useNotificationStore()`
+
+## Adding New Realtime Features
+
 ```js
-import feedService from '@/services/feed/feed.service';
-const posts = await feedService.getPersonalizedFeed(userId, options);
-```
+// In any component or hook — no provider setup needed:
+import RealtimeBus from '@/lib/realtime/RealtimeBus';
 
-Post-migration (NestJS API):
-```js
-// Only feed.service.js changes — API call replaces base44 query
-// All components remain unchanged
+useEffect(() => {
+  return RealtimeBus.subscribe('Comment', 'create', (event) => {
+    if (event.data.post_id === postId) addComment(event.data);
+  });
+}, [postId]);
 ``

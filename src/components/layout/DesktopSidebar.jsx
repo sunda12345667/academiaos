@@ -6,13 +6,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import {
   Home, GraduationCap, Users, ShoppingBag, Wallet,
-  Bell, User, Zap, Search, Settings, PlusSquare,
+  Bell, User, Search, Settings,
   BookOpen, MessageCircle, TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NavBadge from './NavBadge';
 import SidebarUserCard from './SidebarUserCard';
 import SidebarCreateButton from './SidebarCreateButton';
+import ErrorBoundary from '@/lib/errors/ErrorBoundary';
 
 const PRIMARY_NAV = [
   { to: '/', icon: Home, label: 'Home', exact: true },
@@ -103,7 +104,11 @@ export default function DesktopSidebar() {
           <Settings className="w-5 h-5 flex-shrink-0" />
           <span className="text-sm font-medium">Settings</span>
         </Link>
-        {profile && <SidebarUserCard profile={profile} />}
+        {profile && (
+        <ErrorBoundary inline>
+          <SidebarUserCard profile={profile} />
+        </ErrorBoundary>
+      )}
       </div>
     </nav>
   );

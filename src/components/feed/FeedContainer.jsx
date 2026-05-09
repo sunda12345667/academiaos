@@ -7,6 +7,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import PostCard from './PostCard';
 import PostCardSkeleton from './PostCardSkeleton';
 import FeedEmptyState from './FeedEmptyState';
+import ErrorBoundary from '@/lib/errors/ErrorBoundary';
 
 export default function FeedContainer({
   posts,
@@ -52,7 +53,9 @@ export default function FeedContainer({
   return (
     <div className="space-y-0">
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} onUpdate={onPostUpdate} />
+        <ErrorBoundary key={post.id} inline>
+          <PostCard post={post} onUpdate={onPostUpdate} />
+        </ErrorBoundary>
       ))}
 
       {/* Infinite scroll sentinel */}

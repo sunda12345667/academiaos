@@ -1,11 +1,11 @@
 /**
  * NavBadge — Notification dot/count for nav items
- * Connects to notification store
+ * Reads from centralized NotificationProvider — no direct subscription here
  */
-import { useNotifications } from '@/hooks/useNotifications';
+import { useNotificationStore } from '@/providers/NotificationProvider';
 
 export default function NavBadge({ type }) {
-  const { unreadCount } = useNotifications();
+  const { unreadCount } = useNotificationStore();
 
   if (type !== 'notifications' || unreadCount === 0) return null;
 

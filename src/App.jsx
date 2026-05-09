@@ -8,22 +8,28 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { UserProvider } from '@/hooks/useCurrentUser';
 import AppShell from '@/components/layout/AppShell';
+import ErrorBoundary from '@/lib/errors/ErrorBoundary';
 
 // Route-level code splitting — each page is a separate bundle chunk
-const Home         = lazy(() => import('@/pages/Home'));
-const Learn        = lazy(() => import('@/pages/Learn'));
-const Groups       = lazy(() => import('@/pages/Groups'));
-const Marketplace  = lazy(() => import('@/pages/Marketplace'));
-const Wallet       = lazy(() => import('@/pages/Wallet'));
+const Home          = lazy(() => import('@/pages/Home'));
+const Learn         = lazy(() => import('@/pages/Learn'));
+const Groups        = lazy(() => import('@/pages/Groups'));
+const Marketplace   = lazy(() => import('@/pages/Marketplace'));
+const Wallet        = lazy(() => import('@/pages/Wallet'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
-const Profile      = lazy(() => import('@/pages/Profile'));
-const Create       = lazy(() => import('@/pages/Create'));
+const Profile       = lazy(() => import('@/pages/Profile'));
+const Create        = lazy(() => import('@/pages/Create'));
 
-// Route-level loading fallback
-function PageLoader() {
+// App-level splash loader (used before router is ready)
+function AppLoader() {
   return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-6 h-6 border-2 border-border border-t-primary rounded-full animate-spin" />
+    <div className="fixed inset-0 flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+        </div>
+        <p className="text-sm text-muted-foreground font-medium">Loading StudentOS…</p>
+      </div>
     </div>
   );
 }
@@ -31,18 +37,7 @@ function PageLoader() {
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-          </div>
-          <p className="text-sm text-muted-foreground font-medium">Loading StudentOS…</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoadingPublicSettings || isLoadingAuth) return <AppLoader />;
 
   if (authError) {
     if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
@@ -50,8 +45,14 @@ const AuthenticatedApp = () => {
   }
 
   return (
+    // UserProvider is above AppShell so profile is available when AppShell mounts providers
     <UserProvider>
-      <Suspense fallback={<PageLoader />}>
+      {/*
+        Suspense here is the ROOT fallback for initial lazy chunk loads.
+        AppShell adds a SECOND Suspense for subsequent navigations.
+        This prevents the entire app from going blank on first load.
+      */}
+      <Suspense fallback={<AppLoader />}>
         <Routes>
           <Route element={<AppShell />}>
             <Route path="/" element={<Home />} />
@@ -73,13 +74,16 @@ const AuthenticatedApp = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    // Top-level ErrorBoundary catches any catastrophic failures (auth, query client, router)
+    <ErrorBoundary message="StudentOS failed to load. Please refresh the page.">
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

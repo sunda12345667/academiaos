@@ -3,7 +3,7 @@
  * Handles all post types: text, image, video, poll, question, resource
  * Optimistic interaction updates, permission-aware actions
  */
-import { useState, memo } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import postService from '@/services/social/post.service';
@@ -18,26 +18,23 @@ const PostCard = memo(function PostCard({ post, onUpdate }) {
   const [saved, setSaved] = useState(false);
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
 
-  async function handleLike() {
+  const handleLike = useCallback(async () => {
     if (!profile) return;
-    // Optimistic update
     const wasLiked = liked;
     setLiked(!liked);
     setLikeCount(c => wasLiked ? c - 1 : c + 1);
-
     try {
       const result = await postService.toggleLike(post.id, profile.id);
       setLiked(result.liked);
       setLikeCount(result.likeCount);
       onUpdate?.(post.id, { like_count: result.likeCount });
     } catch {
-      // Revert on error
       setLiked(wasLiked);
       setLikeCount(c => wasLiked ? c + 1 : c - 1);
     }
-  }
+  }, [liked, profile, post.id, onUpdate]);
 
-  async function handleSave() {
+  const handleSave = useCallback(async () => {
     if (!profile) return;
     setSaved(s => !s);
     try {
@@ -45,7 +42,7 @@ const PostCard = memo(function PostCard({ post, onUpdate }) {
     } catch {
       setSaved(s => !s);
     }
-  }
+  }, [profile, post.id]);
 
   return (
     <article className="feed-card mx-4 my-3 overflow-hidden">
