@@ -1,258 +1,258 @@
 # StudentOS — Mobile Execution Roadmap
-*v1.0 | 2026-05-09*
+
+**Date:** 2026-05-09  
+**Target:** iOS + Android via Capacitor (Phase 1) → React Native (Phase 2)
 
 ---
 
-## Mobile-First Design Decisions (Already in Place)
+## 1. Mobile Strategy Overview
 
-StudentOS is built on React + Vite. The same codebase serves both the web app and — via **Capacitor** — iOS and Android as a hybrid native app. This is the correct architecture for a startup that needs to move fast.
+### Why Capacitor First, Not React Native
 
-### Capacitor (Not React Native) — Rationale
+StudentOS is built in React + Tailwind. The fastest path to mobile distribution is:
 
-| Factor | Capacitor | React Native |
+```
+Phase 1 (0–3 months): Capacitor wrapper
+  - Wrap existing React web app in Capacitor shell
+  - Native iOS/Android app = same codebase
+  - App Store + Play Store distribution within weeks
+  - All business logic, services, hooks reused 100%
+  - Limitation: no native components (scroll performance, camera, etc.)
+
+Phase 2 (6–12 months): React Native
+  - Migrate UI layer to React Native (NativeWind for Tailwind → RN styles)
+  - Services layer (services/*) is framework-agnostic — already reusable
+  - Hooks layer is framework-agnostic — already reusable
+  - Only components/ and pages/ need reimplementation
+  - Incremental: migrate screen by screen
+```
+
+### Business Logic Portability (Already Done)
+
+The existing service layer is 100% portable to React Native because:
+- No DOM access
+- No browser-only APIs (except `window.location` in a few places — flagged below)
+- No React component imports
+- Pure async functions with Base44 SDK calls
+
+**Files with browser-only code to fix before React Native:**
+```
+services/growth/viral.service.js:
+  window.location.origin → replace with: Platform.select({ web: window.location.origin, native: 'https://studentos.app' })
+
+lib/infra/app-bootstrap.js:
+  window.addEventListener → wrap in Platform.OS === 'web' check
+
+lib/infra/performance.monitor.js:
+  PerformanceObserver → web only, noop on native
+
+lib/infra/event-queue.js:
+  localStorage → replace with AsyncStorage on native
+```
+
+---
+
+## 2. Capacitor Implementation Plan
+
+### Phase 1 Setup (2 weeks)
+```
+Week 1:
+  1. npx cap init StudentOS com.studentos.app
+  2. npx cap add ios
+  3. npx cap add android
+  4. Configure app icon (1024×1024) + splash screen
+  5. Configure Capacitor config (appId, appName, webDir: 'dist')
+  
+Week 2:
+  6. Add @capacitor/push-notifications (FCM setup)
+  7. Add @capacitor/camera (profile photo upload)
+  8. Add @capacitor/share (share URLs to WhatsApp, Twitter, etc.)
+  9. Add @capacitor/haptics (reaction feedback)
+  10. Add @capacitor/status-bar (dark/light mode)
+```
+
+### Push Notifications Setup (Critical)
+
+```
+iOS:
+  1. Apple Developer Account → Certificates → APNs key
+  2. Firebase project → iOS app → upload APNs key
+  3. FCM server key → store in backend function secrets
+
+Android:
+  1. Firebase project → Android app → download google-services.json
+  2. Add to android/app/
+  3. FCM sender ID → Capacitor config
+
+Backend:
+  1. Create backend function: sendPushNotification(userId, title, body, data)
+  2. Calls FCM HTTP v1 API
+  3. Store FCM token per user (add fcm_token field to UserProfile)
+  4. notification.service → triggers push on create if is_pushed=false
+```
+
+### Native Share Integration
+
+```javascript
+// Replace buildShareUrl clipboard copy with native share sheet:
+import { Share } from '@capacitor/share';
+
+export async function nativeShare(url, title, text) {
+  if (typeof Share !== 'undefined') {
+    await Share.share({ title, text, url });
+  } else {
+    await navigator.clipboard.writeText(url);
+  }
+}
+```
+
+---
+
+## 3. Mobile Navigation Adaptation
+
+Current web navigation: React Router DOM (sidebar + bottom nav).
+
+**Mobile already correct** — `MobileBottomNav` exists, `MobileHeader` exists, `AppShell` is responsive.
+
+Required changes for Capacitor:
+```
+1. Back button handling (Android hardware back):
+   @capacitor/app → App.addListener('backButton', handler)
+   Deep nesting: navigate back, root: minimize app (don't close)
+
+2. Status bar color:
+   @capacitor/status-bar → match --sidebar-background in dark mode
+   StatusBar.setStyle({ style: Style.Dark }) on dark mode
+
+3. Keyboard handling (iOS):
+   @capacitor/keyboard → Keyboard.addListener('keyboardDidShow', adjustScroll)
+   Input fields in feed composer must scroll above keyboard
+
+4. Safe area enforcement:
+   env(safe-area-inset-*) already in index.css ✅
+   pb-safe and pt-safe utilities already defined ✅
+```
+
+---
+
+## 4. Offline Readiness
+
+### What Works Offline (Progressive Enhancement)
+
+| Feature | Offline Behavior |
+|---|---|
+| Feed (cached) | Show cached posts from last session |
+| Post creation | Queue locally, sync on reconnect |
+| Notifications | Show cached (badge count may be stale) |
+| Wallet balance | Show last known balance with stale indicator |
+| Messages | Show last loaded conversation, queue outbound |
+
+### Implementation (Phase 1: basic)
+
+```javascript
+// service worker (add to vite.config.js via vite-plugin-pwa)
+// Cache strategy: NetworkFirst for API, CacheFirst for static assets
+
+// event-queue already has DLQ for offline resilience ✅
+// Add "offline indicator" banner in MobileHeader when navigator.onLine = false
+```
+
+### Implementation (Phase 2: full offline)
+
+- Post draft saved to IndexedDB (pending sync)
+- Feed posts cached in IndexedDB (last 50 posts)
+- Sync queue processed in background when online
+
+---
+
+## 5. Mobile Performance Budgets
+
+| Metric | Target | Measurement Tool |
 |---|---|---|
-| Code reuse | 100% — exact same React components | ~70% — separate native navigation + components |
-| Migration cost | Days (add Capacitor, build apps) | Months (rewrite navigation, gestures) |
-| Performance at MVP | Sufficient for social feeds, DMs, profiles | Marginally better for animations |
-| Ecosystem | Ionic plugins (camera, push, biometrics) | React Native ecosystem |
-| Team requirement | Frontend web engineers can ship mobile | Requires dedicated RN engineers |
+| App cold start (web) | < 3s on 4G | Lighthouse |
+| First meaningful paint | < 1.5s | Core Web Vitals |
+| Feed scroll jank | 0 dropped frames | Chrome DevTools |
+| Image load (feed card) | < 500ms | Network panel |
+| Route transition | < 200ms | `journey.routeComplete()` |
+| Video start time | < 2s | Manual test |
+| Offline detection → banner | < 500ms | `app-bootstrap.js` |
 
-**Decision: Ship Capacitor hybrid app for Phase 1. Evaluate React Native migration at Phase 3 when DAU > 10k and animation performance becomes user-complained.**
+### Media Optimization Rules (MVP)
 
----
-
-## Current Mobile Readiness (Web Layer)
-
-### Already Done ✅
-- Mobile-bottom nav (`MobileBottomNav`) with safe-area padding
-- `MobileHeader` for contextual top nav
-- `pb-safe` / `pt-safe` safe area utilities
-- `scrollbar-hide` on feeds (mobile scroll behavior)
-- `overflow-x-auto scrollbar-hide snap-x` for horizontal carousels
-- Touch-friendly min 44px targets (enforced in DESIGN_SYSTEM.md)
-- Responsive at 375px minimum viewport
-- `AppLoader` splash screen before React renders
-- `lazy()` route splitting (one JS chunk per page)
-
-### Still Needed for Mobile App Build
-
-#### Phase 0 — Web PWA (ship first, zero app store friction)
-- [ ] `index.html` — add `<meta name="theme-color">`, `<link rel="manifest">`
-- [ ] Service Worker for offline caching of shell (via `vite-plugin-pwa`)
-- [ ] Add-to-homescreen prompt on mobile Safari/Chrome
-- [ ] Splash screen image set (192px, 512px icons)
-
-#### Phase 1 — Capacitor Hybrid App
-- [ ] `npm install @capacitor/core @capacitor/cli`
-- [ ] `npx cap init StudentOS com.studentos.app`
-- [ ] `npx cap add ios && npx cap add android`
-- [ ] Wire `Capacitor.getPlatform()` into AppShell to switch mobile-native nav
-- [ ] Install `@capacitor/push-notifications` → wire to NotificationProvider
-- [ ] Install `@capacitor/camera` → wire to post media picker
-- [ ] Install `@capacitor/filesystem` → offline draft storage
-- [ ] Install `@capacitor/haptics` → gift send, like tap feedback
-- [ ] Install `@capacitor/status-bar` → match status bar to dark sidebar
-
-#### Phase 2 — React Native (when warranted)
-Full migration plan in ARCHITECTURE_AUDIT.md Phase 4+.
-
----
-
-## Shared Business Logic Layer (Already Migration-Safe)
-
-All services (`services/`) are framework-agnostic JavaScript. They work identically in:
-- React web app
-- Capacitor hybrid app
-- React Native (with `@base44/sdk` compatible RN version)
-
-**Zero changes needed to any service file when migrating to native.**
-
-The only migration surface is UI layer:
 ```
-services/    ← 100% portable (no DOM APIs)
-hooks/       ← 95% portable (replace window.addEventListener with AppState)
-providers/   ← 90% portable (RealtimeBus works, replace visibilitychange)
-components/  ← 20% portable (DOM-specific → RN View/Text/Image)
-pages/       ← 0% portable (React Router → React Navigation)
+Images:
+  - Always use WebP format (60% smaller than JPEG)
+  - Serve at 2× max display size (no 4K images in feed cards)
+  - Feed card: max 800px width
+  - Avatar: max 120px
+  - Use loading="lazy" on all images below fold
+
+Videos:
+  - Max upload: 50MB (enforce in media.service.js)
+  - Auto-play: muted only (browser policy + UX)
+  - Poster image: required for all videos
+  - Compress on upload: target 720p, 2Mbps max bitrate
+  - Use Intersection Observer to pause off-screen videos
 ```
 
 ---
 
-## Mobile Performance Budgets
+## 6. App Lifecycle Handling
 
-### Target Metrics (Lighthouse Mobile, Good 3G simulation)
-
-| Metric | Target | Measuring |
-|---|---|---|
-| First Contentful Paint | < 1.5s | `perf.mark('fcp')` via PerformanceObserver |
-| Time to Interactive | < 3.0s | Route + first data load |
-| Feed initial render | < 2.0s | `journeyTimer.feedLoad/feedLoaded` |
-| Route change | < 500ms | `journeyTimer.routeStart/routeComplete` |
-| JS bundle (initial) | < 200KB gzipped | Vite bundle analyzer |
-| Image LCP | < 2.5s | WebP format, responsive srcSet |
-
-### Performance Rules for Mobile
-
-```
-✅ DO:
-  - Use next-gen image formats (WebP, AVIF) for all media
-  - Lazy-load images below the fold (loading="lazy" on <img>)
-  - Use Skeleton components for all content loading (no CLS)
-  - Debounce realtime re-renders (max 60fps via requestAnimationFrame)
-  - Virtualize long lists (react-window) when post count > 50
-
-❌ DON'T:
-  - Animate CSS width/height (use transform instead)
-  - Load all feed images eagerly
-  - Block TTI with analytics scripts
-  - Store large blobs in entity fields (FIELD_SIZE_LIMITS rule)
-  - Subscribe to entities from inside lists (RealtimeBus rule)
-```
-
----
-
-## Offline Readiness
-
-### Phase 0 — Graceful Degradation
-- event-queue DLQ buffers analytics events when offline (already in place)
-- RealtimeBus reconnects on `online` event (already in place)
-- Feed shows stale content from react-query cache when offline
-- Compose box disabled with "You're offline" message
-- Wallet operations blocked with clear offline state
-
-### Phase 1 — Offline Drafts
-- Store post drafts in `localStorage` / Capacitor Filesystem
-- Resync drafts on reconnect
-- Show offline badge in MobileHeader when `navigator.onLine === false`
-
-### Phase 2 — Offline-First
-- Service Worker caches: app shell, last 20 feed posts, user profile, own notifications
-- Message queue: DMs written offline → sync on reconnect (CRDTs for conflict resolution)
-
----
-
-## Push Notification Strategy
-
-### Web Push (Phase 0 — PWA)
-```
-1. Request permission on: first live session notification OR first DM received
-   (Never ask on first app open — this destroys opt-in rate)
-2. Service Worker handles push events via Notification API
-3. Deep link routing: push payload includes { route: '/notifications', entity_id }
-4. Silent push budget: max 3 silent pushes/day (iOS limitation)
-```
-
-### Native Push (Phase 1 — Capacitor)
-```
-Capacitor Push Notifications plugin → FCM (Android) + APNs (iOS)
-Token stored on UserProfile.push_token field
-Backend function: sendPushNotification(token, title, body, data)
-Called by: notification.intelligence.js after createNotification()
-```
-
-### Push Permission UX Strategy
-```
-DO NOT ask for push permission:
-  - On first app open
-  - On signup
-  - In an interrupting modal
-
-DO ask when:
-  - User receives their first comment/like (contextual: "Get notified when people engage")
-  - User follows their first creator (contextual: "Know when they go live")
-  - After first message received (contextual: "Never miss a message")
-
-Result: 40-60% opt-in rate (vs 5-15% for cold-ask)
-```
-
----
-
-## App Lifecycle Handling
-
-### React Web
-Already handled in `app-bootstrap.js`:
-- `pagehide` → flush event-queue, flush logger
-- `visibilitychange` → RealtimeBus stale check + reconnect
-- `online/offline` → network status events
-
-### Capacitor Native (add when integrating)
-```js
-// providers/AppLifecycleProvider.jsx — add to AppShell
+```javascript
+// Capacitor lifecycle events (wire in app-bootstrap.js for native)
 import { App } from '@capacitor/app';
 
 App.addListener('appStateChange', ({ isActive }) => {
   if (isActive) {
-    RealtimeBus.checkStaleConnections();
+    // App foregrounded — reconnect realtime, refresh stale data
+    RealtimeBus.checkStaleness();
     eventQueue.track('session', 'app_foregrounded', {});
   } else {
+    // App backgrounded — flush analytics, pause non-critical ops
     eventQueue.flush();
     logger.flush();
   }
 });
 
-App.addListener('backButton', () => {
-  // Android back button → navigate back or minimize (not exit)
-  if (window.history.length > 1) window.history.back();
-  else App.minimizeApp();
+App.addListener('appUrlOpen', ({ url }) => {
+  // Deep link handling — /post/:id, /profile/:username, etc.
+  const route = parseDeepLink(url);
+  if (route) router.navigate(route);
 });
 ```
 
 ---
 
-## Media Optimization
+## 7. React Native Migration Readiness (Phase 2 Checklist)
 
-### Image Pipeline
+### Already Portable (no changes needed)
+- ✅ All services (`services/**`) — pure JS, no DOM
+- ✅ All hooks (`hooks/**`) — no DOM
+- ✅ All providers (`providers/**`) — React context, no DOM
+- ✅ `lib/infra/retry.js` — pure JS
+- ✅ `lib/infra/feature-flags.js` — pure JS
+- ✅ `lib/infra/logger.js` — minor fix needed (`localStorage` → `AsyncStorage`)
+- ✅ `lib/errors/AppError.js` — pure JS
+- ✅ `lib/constants/platform.constants.js` — pure JS
+- ✅ All entities (JSON schemas)
+
+### Needs Adaptation
+- 🔄 `components/**` — migrate to React Native components
+- 🔄 `pages/**` — migrate to React Native screens (React Navigation)
+- 🔄 `tailwind.config.js` → `nativewind.config.js`
+- 🔄 `lib/infra/app-bootstrap.js` — split into web/native bootstrap
+- 🔄 `lib/infra/event-queue.js` — replace `localStorage` with `AsyncStorage`
+- 🔄 `lib/realtime/RealtimeBus.js` — replace `visibilitychange` with `AppState`
+
+### Migration Strategy (Screen Priority Order)
 ```
-Upload path:   User selects → compress client-side (< 500KB) → UploadFile → CDN URL stored
-Display path:  CDN URL → responsive img srcSet → WebP with JPEG fallback
-Thumbnails:    Auto-generated by CDN (CloudFlare Image Resizing or imgix)
-```
-
-### Video Pipeline
-```
-Upload:    User records/selects → validate (< 100MB, < 3min for feed) → UploadFile
-Transcode: Mux or Cloudflare Stream (future) — currently raw upload
-Playback:  <video> with controls={false} loop muted playsInline (autoplay policy)
-Thumbnail: First-frame capture (future Mux thumbnail endpoint)
-```
-
-### Live Stream
-```
-Protocol:  RTMP (creator side) → stream provider (Agora/LiveKit/Mux)
-Playback:  HLS (viewer side) — works in <video> on all platforms
-Quality:   Adaptive bitrate (ABR) — provider managed
-```
-
----
-
-## App Store Readiness
-
-### iOS App Store Requirements
-- [ ] Privacy manifest (`PrivacyInfo.xcprivacy`) — declare APIs: NSUserDefaults, NSFileManager
-- [ ] App Tracking Transparency (ATT) prompt — only if using IDFA (skip for MVP)
-- [ ] Required reason APIs — declare camera, photo library usage descriptions
-- [ ] Age rating: 12+ (due to: mild social content, DMs, financial features)
-- [ ] Content Policy: Human Interface Guidelines compliance (no custom keyboards blocking)
-- [ ] In-App Purchase (IAP): gift coins MUST go through Apple IAP if on iOS (30% cut)
-  - **Critical:** Gift coin purchase on web → OK (Paystack)
-  - Gift coin purchase in iOS app → MUST use Apple IAP or App Store rejection
-  - **Decision:** Phase 1 iOS app is social/feed only, no coin purchase in-app
-- [ ] App Review demo account provided (admin@studentos.demo)
-- [ ] Screenshots: iPhone 15 Pro Max + iPhone SE sizes
-
-### Google Play Requirements
-- [ ] Target SDK 34+ (required for all new apps)
-- [ ] 64-bit architecture (Capacitor handles this)
-- [ ] Data safety form: declare data collected (email, usage data, financial info)
-- [ ] Policy: financial features require "Payments" declaration
-- [ ] Content rating: ESRB questionnaire → Teen rating
-- [ ] Play Integrity API: add for production anti-tampering (Phase 2)
-
-### Privacy Policy Requirements (legal, must have)
-Clauses required (obtain legal review):
-- Data collected: email, device ID, usage, financial transactions
-- Third-party services: Paystack, Google Analytics (if used), AI providers
-- Data retention: transaction records 7 years (Nigerian FIRS requirement)
-- User rights: deletion, data export
-- Minors: platform age-gated at 13+ (COPPA equivalent)
-- Financial: CBN compliance statement for wallet features
+1. Home feed (most-used) — highest ROI
+2. Post card + actions  — used on every screen
+3. Profile page         — discovery driver
+4. Notifications        — retention driver
+5. Messaging (DMs)      — engagement driver
+6. Groups               — community driver
+7. Creator dashboard    — creator retention
+8. Wallet               — financial (highest risk, migrate last)
+``

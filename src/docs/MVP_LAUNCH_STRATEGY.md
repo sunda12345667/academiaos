@@ -1,149 +1,165 @@
 # StudentOS — MVP Launch Strategy
-*Principal Product/Platform Architect | v1.0 | 2026-05-09*
+
+**Date:** 2026-05-09  
+**Phase:** Pre-launch hardening  
+**Author:** Platform Architecture Team
 
 ---
 
-## Executive Summary
+## 1. MVP Philosophy
 
-StudentOS ships in three sequential phases:
+StudentOS is a social creator ecosystem. The MVP is NOT a feature dump — it is the **minimum surface required to create one habit loop**:
 
-| Phase | Name | Target | Timeline |
-|---|---|---|---|
-| 0 | **Private Alpha** | 50 hand-picked creators + 2 campus pilots | Week 1–4 |
-| 1 | **Campus Beta** | 5 Nigerian universities, 500–2,000 users | Week 5–12 |
-| 2 | **Public Launch** | Open registration, national rollout | Week 13–24 |
-| 3 | **Creator Economy** | Monetization + Ads live | Week 25–36 |
+> **"Open app → see valuable content from someone at your school → post something → get a reaction → come back tomorrow"**
 
-Each phase has a hard feature gate. Nothing in Phase 2 ships without Phase 1 targets met.
+Everything that doesn't serve this loop is deferred. Everything that breaks this loop is a blocker.
 
 ---
 
-## True MVP Scope (Phase 0 + Phase 1)
+## 2. MVP Scope Definition
 
-### ✅ MUST SHIP — Core Social Loop
-The only thing that matters for retention is: **post → discover → follow → return**.
+### ✅ Phase 0 — Private Beta (Campus 1, ~50 users)
+**Goal:** Validate social loop. Find bugs. Tune feed.
 
 | Feature | Status | Notes |
 |---|---|---|
-| Feed (home, discover, following) | ✅ Implemented | Ship all three tabs |
-| Post create (text, image, video) | ✅ Implemented | Ship |
-| Comments + reactions | ✅ Implemented | Ship |
-| Follow / unfollow | ✅ Implemented | Ship |
-| User profiles | ✅ Implemented | Ship |
-| Notifications (social) | ✅ Implemented | Ship — dedup + quiet hours active |
-| Group creation + membership | ✅ Implemented | Ship — campus groups essential |
-| Direct messages | ✅ Implemented | Ship — DMs drive daily return |
-| Search | ✅ Implemented | Ship |
+| User registration + profiles | ✅ Built | |
+| Home feed (following + discover) | ✅ Built | |
+| Post creation (text, image, video) | ✅ Built | |
+| Like, comment, share, save | ✅ Built | |
+| Follow / unfollow | ✅ Built | |
+| DMs (1-on-1 messaging) | ✅ Built | |
+| Push notifications (in-app) | ✅ Built | |
+| Basic school matching | ✅ Built | |
+| Interest selection (onboarding) | ✅ Built | |
+| Content moderation (AI + manual) | ✅ Built | |
 
-### ✅ MUST SHIP — Creator Foundation
-| Feature | Status | Notes |
-|---|---|---|
-| Creator profiles (public) | ✅ Implemented | Ship |
-| Creator tiers (basic/pro display) | ✅ Implemented | Ship display only, no monetization yet |
-| Live sessions (schedule + host) | ✅ Implemented | **Gate: max 50 concurrent streams at Phase 0** |
-| Post analytics (creator dashboard) | ✅ Implemented | Ship simplified view |
-| Onboarding (student + creator flow) | ✅ Implemented | Critical for activation |
-
-### ✅ MUST SHIP — Fintech (Phase 1 only, NOT Phase 0)
-| Feature | Status | Notes |
-|---|---|---|
-| Wallet (view balance) | ✅ Implemented | Phase 1 — read-only at first |
-| Wallet topup (Paystack) | ✅ Implemented | Phase 1 — after DEBT-001 wallet race fixed |
-| Gift sending | ✅ Implemented | Phase 1 — after atomic debit confirmed |
-| Payout requests | ✅ Implemented | Phase 1 — manual review only |
-
-### ⚠️ DEFER TO PHASE 2
-| Feature | Reason to Defer |
-|---|---|
-| Marketplace | Requires separate moderation, fraud surface, no social retention value at MVP |
-| Ad campaigns | No advertiser base yet; premature complexity |
-| Paid courses (monetization) | Requires full KYC, payout infrastructure proven first |
-| Subscriptions | Same as paid courses |
-| Gift coin purchases | Fintech risk — defer until DEBT-001 fully resolved and audited |
-| AI-powered feed ranking | Ship heuristic ranking first; ML model needs data to train |
-| Collaborative filtering | Same — needs data |
-| School ERP integration | Too complex for MVP; manual school onboarding only |
-
-### ❌ TOO RISKY FOR MVP — DO NOT SHIP
-| Feature | Risk |
-|---|---|
-| Advertiser self-serve campaigns | No fraud detection at scale; financial liability without proven moderation |
-| Livestream ticketed events | Payment + live streaming + fraud = three risk vectors simultaneously |
-| Creator verification (public badge) | Requires ID verification pipeline not built |
-| Automated payout (no manual review) | Wallet race condition (DEBT-001) must be production-proven for 30 days first |
-| Open referral rewards (gift coins) | Abuse vector — self-referral and farm accounts at small user base |
+**DEFER from Phase 0:**
+- Live streaming (infrastructure not tested under load)
+- Wallet / payments (too risky for beta)
+- Creator monetization (deferred until creator base established)
+- Ads platform (no inventory to sell)
+- Marketplace (secondary to social loop)
+- AI study assistant (nice-to-have, not core to social loop)
 
 ---
 
-## Feature Gating Matrix
+### ✅ Phase 1 — Public Beta (3 campuses, ~500 users)
+**Goal:** Validate campus network effect. Test retention. Start creator seeding.
 
-### Must-Have vs. Defer Decision Framework
+**Include from Phase 0 +:**
 
-```
-SHIP if: Needed for core loop retention OR creator activation
-DEFER if: Adds moderation surface without retention value
-KILL if: Creates financial/legal liability without proven infrastructure
-```
-
-### Feature Flag Assignments (all in `lib/infra/feature-flags.js`)
-
-| Flag | Phase 0 | Phase 1 | Phase 2 |
-|---|---|---|---|
-| `FEED_AI_RANKING` | false | 10% rollout | 100% |
-| `GIFTING_ENABLED` | false | true | true |
-| `WALLET_TOPUP` | false | true | true |
-| `PAYOUT_REQUESTS` | false | true (manual) | true (auto) |
-| `LIVE_STREAMS` | 10 invited creators | 50 creators | all |
-| `MARKETPLACE` | false | false | true |
-| `AD_CAMPAIGNS` | false | false | Phase 3 |
-| `CREATOR_TIPS` | false | trust≥40 only | all eligible |
-| `REFERRAL_REWARDS` | false | XP only | XP + coins |
-| `AI_STUDY_ASSISTANT` | false | 20% rollout | 100% |
-| `PUSH_NOTIFICATIONS` | false | true | true |
-
-### Flag Management (operational)
-- Feature flag state lives in `lib/infra/feature-flags.js` + Vite env vars
-- URL override (`?flag_X=true`) available for QA testing any flag in production
-- Each flag has an owner who approves rollout and rollback
-- Never remove a flag before the feature is 100% rolled out for 30 days
-
----
-
-## MVP Hardening Checklist (before Phase 0)
-
-### Non-Negotiable Technical Gates
-- [ ] DEBT-001: Wallet atomic debit implemented and audited
-- [ ] DEBT-002: LiveSession.stream_key removed from client entity
-- [ ] DEBT-007: Personalization cache cleared on logout
-- [ ] All P0 security items in PRODUCTION_READINESS.md resolved
-- [ ] Paystack webhook signature validation confirmed
-- [ ] At least 2 moderator accounts created
-- [ ] `LIVE_STREAMS` flag limits enforced (max 50 concurrent)
-- [ ] ErrorBoundary smoke-tested on every page
-- [ ] Feed loads under 2 seconds on Lighthouse mobile (Good 3G)
-
-### Moderation Gate (must have before first public user)
-- [ ] Post create → AI moderation pipeline tested (flagging working)
-- [ ] Report → escalation → resolution flow working end-to-end
-- [ ] Admin dashboard accessible (even if minimal UI)
-- [ ] Content removal wires post to `moderation_status: 'removed'`
-- [ ] Account suspension blocks UI via AccountStatusGuard
-
-### Creator Gate (must have before creator invite)
-- [ ] Creator profile page renders with all tiers
-- [ ] Posting streak displays correctly on creator dashboard
-- [ ] Live session create → start → end flow tested
-- [ ] Creator notifications (new follower, comment) delivering
-
----
-
-## Operationally Dangerous Features (caution flags)
-
-| Feature | Danger | Mitigation |
+| Feature | Risk | Notes |
 |---|---|---|
-| Live streaming | RTMP key exposure, stream abuse, CSAM risk | Rate limit stream start; mandatory content type declaration; 1-click admin terminate |
-| Gift sending | Self-gifting, coordinated fraud, money laundering | Self-gift detection (risk.engine), KYC basic required, high-value alert at ₦2,000 |
-| Payout processing | Irreversible bank transfers, fraud | Manual review for all Phase 1 payouts; 48h hold; risk score gate |
-| DMs | Harassment, unsolicited content | Report button on every message; rate limit 5/min; block enforcement |
-| AI content moderation | False positives silencing legitimate content | Always human review escalation path; appeal flow must work before AI goes live |
-| Referral rewards | Farm accounts for referral farming | Activation requirement (7-day window, must post); IP fingerprint dedup |
+| Group creation and management | LOW | Core to campus communities |
+| Live sessions (broadcast only, no viewer limits) | MEDIUM | Test with selected creators first |
+| Creator profiles + tier display | LOW | No monetization yet |
+| Creator dashboard (analytics) | LOW | View-only, no financial data |
+| Notifications (social only) | LOW | No financial alerts yet |
+| Referral system | LOW | Campus expansion loop |
+| Achievements + XP | LOW | Retention driver |
+| Onboarding flow (all steps) | LOW | |
+| Video feed (short-form) | MEDIUM | Media-heavy, test CDN performance |
+| Wallet (view balance + top up only) | MEDIUM | **No withdrawals in Phase 1** |
+| Course viewing (no creation yet) | LOW | |
+
+**DEFER from Phase 1:**
+- Payouts / withdrawals (too early — creator base too small)
+- Gifts (economy not established)
+- Marketplace (moderation overhead too high)
+- Ads (no ad sales team)
+- Co-hosted live sessions
+- Premium content (paid access)
+
+---
+
+### ✅ Phase 2 — Creator Economy Launch (~2,000 users, top creators stable)
+**Goal:** Establish creator economy. First revenue.
+
+**Include from Phase 1 +:**
+
+| Feature | Risk | Notes |
+|---|---|---|
+| Gift sending (during live) | HIGH | Requires TD-01 wallet lock fix first |
+| Wallet withdrawals | HIGH | Requires KYC flow + Paystack payout API |
+| Creator monetization (tips + paid content) | HIGH | After payout tested |
+| Marketplace listings | MEDIUM | Category-limited (textbooks first) |
+| AI study assistant | MEDIUM | Usage-based cost, feature-flagged |
+| Ads platform (self-serve basic) | HIGH | After creator/advertiser base established |
+| Premium live sessions (paid tickets) | HIGH | After gift economy proven |
+| Creator verification workflow | MEDIUM | Admin-reviewed |
+
+---
+
+## 3. Must-Have vs Defer Matrix
+
+| System | MVP Must-Have | Defer Until |
+|---|---|---|
+| Social feed (home, discover, video) | ✅ YES | — |
+| Post creation (text + media) | ✅ YES | — |
+| Follow graph | ✅ YES | — |
+| Messaging (DMs) | ✅ YES | — |
+| Groups (basic) | ✅ YES | — |
+| Notifications (social) | ✅ YES | — |
+| Content moderation pipeline | ✅ YES | — |
+| School matching + onboarding | ✅ YES | — |
+| Creator profiles (display only) | ✅ YES | — |
+| Live streaming | Phase 1 | After CDN/stream provider confirmed |
+| Wallet (view + topup) | Phase 1 | After Paystack tests pass |
+| Gifts | Phase 2 | After wallet race condition fixed |
+| Payouts | Phase 2 | After KYC flow built |
+| Marketplace | Phase 2 | After social loop proven |
+| Ads platform | Phase 3 | After 50+ active advertisers |
+| AI study assistant | Phase 2 | Feature-flagged |
+| Premium/paid content | Phase 2 | After creator base |
+
+---
+
+## 4. Features Too Risky for MVP
+
+### 🔴 DO NOT LAUNCH WITHOUT THESE FIXES:
+
+| Feature | Risk | Required Fix |
+|---|---|---|
+| Gift sending | Financial data corruption | TD-01 (wallet atomic lock) |
+| Withdrawals / payouts | Bank transfer failures | Paystack payout API integration + KYC |
+| Live stream key | Security: RTMP key exposed to clients | TD-02 (remove stream_key from entity) |
+| Admin reverseTransaction | Unauthorized financial reversal | TD-15 (role check) — DONE ✅ |
+| Marketplace (all categories) | Moderation overhead is massive | Limit to textbooks + study materials only |
+| AI generation (InvokeLLM) in real-time posting | LLM latency spikes in feed path | Move to async, never block feed |
+
+### 🟡 HIGH-MAINTENANCE SYSTEMS (defer or staff before launch):
+
+| System | Operational Cost | Recommendation |
+|---|---|---|
+| Live streaming moderation | 24/7 coverage needed | Launch with recorded replay only first |
+| Marketplace moderation | Physical goods = scam risk | Category whitelist, manual review for first 30 days |
+| Payout reviews | Manual review queue required | Hire ops before enabling withdrawals |
+| Advertiser review | Ad creative review required | No self-serve ads until ops team in place |
+| Creator verification | Manual ID verification | Batch process weekly, not real-time |
+
+---
+
+## 5. Feature Flag Strategy
+
+All risky or unfinished features must be behind feature flags at launch.
+
+### Flag Registry (maps to `lib/infra/feature-flags.js`)
+
+| Flag | Default | Phase |
+|---|---|---|
+| `LIVE_STREAMING` | OFF | Phase 1 — creator whitelist |
+| `WALLET_TOPUP` | OFF | Phase 1 — after Paystack test |
+| `WALLET_WITHDRAWAL` | OFF | Phase 2 — after ops ready |
+| `GIFTING` | OFF | Phase 2 — after TD-01 fixed |
+| `MARKETPLACE` | OFF | Phase 2 — category limited |
+| `AI_STUDY_ASSISTANT` | OFF | Phase 2 — cost controlled |
+| `AI_SMART_FEED` | OFF | Phase 1 — 10% canary |
+| `AI_RECOMMENDATION_V2` | OFF | Phase 2 |
+| `CREATOR_MONETIZATION` | OFF | Phase 2 |
+| `ADS_PLATFORM` | OFF | Phase 3 |
+| `PREMIUM_CONTENT` | OFF | Phase 2 |
+| `PREMIUM_LIVE_TICKETS` | OFF | Phase 3 |
+
+**Rollout order:** Flag OFF → Internal team → 5% canary → 25% → 50% → 100%  
+**Rollback:** Toggle flag to OFF — immediate, no deploy required.

@@ -1,371 +1,262 @@
 # StudentOS — Launch Operations Plan
-*v1.0 | 2026-05-09*
+
+**Date:** 2026-05-09  
+**Coverage:** Campus rollout, creator recruitment, war room, support ops
 
 ---
 
-## Performance Targets by Phase
+## 1. Pre-Launch Timeline
 
-### Phase 0 — Private Alpha (Week 1–4)
 ```
-DAU target:             50 users (hand-selected)
-Concurrent users:       20 (non-peak)
-Live streams:           Max 10 concurrent (flag enforced)
-Notifications/day:      < 1,000
-Posts/day:              < 500
-Gifts/day:              0 (gifting flag: off)
-Payouts/week:           0 (payout flag: off)
-Error rate target:      < 5% (learning phase)
-Uptime target:          95% (Base44 provides baseline)
-```
+T-8 weeks: Phase 0 Private Beta
+  - 50 users from 1 campus (handpicked)
+  - No payments, no live streaming
+  - Focus: social loop validation, feed quality, bug triage
+  - Success metric: D7 retention > 40%
 
-### Phase 1 — Campus Beta (Week 5–12)
-```
-DAU target:             500–2,000 users
-Concurrent users:       200 (peak 18:00–21:00 WAT)
-Live streams:           Max 50 concurrent (flag enforced)
-Notifications/day:      < 20,000
-Posts/day:              < 5,000
-Gifts/day:              < 500 transactions
-Payouts/week:           < 50 (manual review threshold: ₦3,000)
-Error rate target:      < 2%
-Feed P95 load:          < 3s
-Uptime target:          99%
-```
+T-4 weeks: Phase 0 → Phase 1 Transition
+  - Fix all bugs from private beta
+  - Enable live streaming for 3 creator accounts
+  - Enable wallet topup (no withdrawals)
+  - Onboard 10 creators (content seeds)
+  - 3 campus ambassadors briefed
 
-### Phase 2 — Public Launch (Week 13–24)
-```
-DAU target:             5,000–15,000
-Concurrent users:       1,000 (peak)
-Live streams:           Max 200 concurrent
-Notifications/day:      < 200,000
-Payouts/week:           < 500
-Error rate target:      < 1%
-Feed P95 load:          < 1.5s
-Uptime target:          99.5%
-```
+T-0 weeks: Phase 1 Public Beta
+  - 3 campuses, ~500 users
+  - Referral codes active
+  - Campus expansion loop enabled
+  - Creator onboarding form live
+  - Support channel active (WhatsApp + email)
 
-### Scale Trigger Points (infrastructure upgrade required)
-```
-> 1,000 DAU:      Monitor WatchEvent write volume, add batch inserts
-> 5,000 DAU:      Add Redis caching layer (sessions, rate limits)
-> 10,000 DAU:     NestJS API migration begins
-> 50,000 DAU:     PostgreSQL migration, Kafka event bus
+T+4 weeks: Phase 1 Review
+  - DAU/WAU/MAU review
+  - Retention cohort analysis
+  - Creator health check
+  - Bug list prioritization
+  - Phase 2 scope locked
+
+T+8 weeks: Phase 2 Creator Economy Launch
+  - Gifts enabled (after TD-01 fixed)
+  - Withdrawals enabled (after payout tested)
+  - Marketplace (textbooks only)
+  - New campus cohort (+2 campuses)
 ```
 
 ---
 
-## Product Analytics Launch Dashboard
+## 2. Campus Rollout Strategy
 
-### Core Metrics (monitored daily from Day 1)
+### Campus Selection Criteria
+Priority: campuses with highest WhatsApp group density + student content creators already active.
 
-#### Acquisition
-| Metric | Definition | Target (Phase 1) |
+| Tier | Example Campuses | Approach |
 |---|---|---|
-| New registrations/day | SignUp events | 50–200 |
-| Referral attribution rate | % signups with ref code | > 30% |
-| Campus penetration | signups / total students per campus | > 5% in 4 weeks |
-| Creator invites sent | creator_invited events | > 10/week |
+| Alpha (Phase 0) | 1 tech-heavy campus | Invite-only, founder-sent |
+| Beta (Phase 1) | UNILAG, LASU, UniAbuja | Campus ambassador + referral |
+| Expansion (Phase 2) | +10 campuses | Self-serve + viral referral |
+| National (Phase 3) | All major universities | Platform-driven growth |
 
-#### Activation (D0–D7)
-| Metric | Definition | Target |
+### Campus Ambassador Program
+
+Each campus gets 1 ambassador. Role: promote, recruit, report bugs, seed content.
+
+**Ambassador Selection:**
+- Already active on social media
+- Known within campus community
+- Willing to post 3× per week minimum
+- Gets: verified badge, early creator tier, ₦5,000 monthly stipend equivalent in wallet credits
+
+**Ambassador Kit:**
+- Referral code (personalized link with school pre-filled)
+- Poster templates (for WhatsApp groups, notice boards)
+- Onboarding script for classmates
+- WhatsApp group template message
+- Bug reporting channel access
+
+### School Onboarding Process
+
+```
+Step 1: Ambassador identifies target WhatsApp groups (class groups, department groups)
+Step 2: Posts tailored message: "I just joined StudentOS — [X] students from [School] 
+         are already on it. Here's my link: [referral URL with school pre-filled]"
+Step 3: New users open link → school is pre-selected → 1-step signup
+Step 4: Platform shows "You and [Ambassador Name] go to the same school 👋"
+Step 5: New user gets school-specific feed immediately (school groups, local content)
+Step 6: Ambassador gets XP + notified of new campus join
+```
+
+---
+
+## 3. Creator Recruitment Workflow
+
+### Target Creator Profiles
+1. Micro-influencers (1k–50k followers) on TikTok/Instagram from Nigerian universities
+2. Lecturers with a personal following
+3. Student content creators (vlogs, tutorials, study tips)
+4. Debate/comedy/spoken word students
+
+### Recruitment Funnel
+
+```
+Discovery → DM/Email Outreach → Application Form → Onboarding Call → 
+Account Setup → First Post Milestone → Creator Tier Grant → Monetization Intro
+```
+
+**Outreach Message Template:**
+> "We're building a creator platform specifically for Nigerian students and educators. 
+> Your audience would love the content you make, and you'd be among the first verified 
+> creators on StudentOS. We're offering [early verified badge + ₦10,000 creator seed credit]. 
+> Interested? [application link]"
+
+### Creator Onboarding Flow (Product)
+
+```
+1. Creator applies via form (name, school, niche, social handles, content samples)
+2. Admin reviews + approves within 48h
+3. Creator gets role=creator + account activated
+4. Onboarding sends "Creator Welcome Kit" notification
+5. Creator completes creator onboarding flow (niche, profile, first post)
+6. After first post: auto-upgraded to basic tier
+7. After 50 followers: pro tier unlocked (if trust ≥ 50)
+8. After 500 followers: monetization eligibility notification
+9. Creator dashboard unlocked showing: views, followers, engagement rate
+```
+
+### Creator Seeding Strategy
+
+**Target before Phase 1 launch:** 10 creators with ≥5 posts each.  
+**Target before Phase 2 launch:** 50 creators, 5 per campus, across 5 niches.
+
+Niches to seed: education/study tips, tech/coding, business/entrepreneurship, campus life/comedy, arts/entertainment.
+
+---
+
+## 4. Launch War Room
+
+### War Room Structure (Launch Day)
+
+| Role | Person | Responsibility |
 |---|---|---|
-| Onboarding completion | % who complete all required steps | > 60% |
-| Interests selected | % who complete step 1 | > 85% |
-| First follow | % who follow 3+ accounts | > 70% |
-| First post | % who publish within D7 | > 25% (creators: > 80%) |
-| First group join | % who join 1+ group | > 50% |
+| Incident Commander | Founder/CTO | Decision authority, escalation |
+| Platform Engineer | Lead Engineer | Infrastructure, deploy, rollback |
+| Product Lead | PM | Feature flag decisions, user comms |
+| Trust & Safety Lead | Ops | Moderation queue, abuse response |
+| Creator Support | Ops | Creator-specific issues |
+| Analytics Watcher | Any engineer | DAU, error rate, notification queue |
 
-#### Retention
-| Metric | Definition | Target |
+### War Room Channels
+- **#war-room-incidents** — active incident management
+- **#war-room-metrics** — DAU/error rate/notification CTR dashboard feed
+- **#war-room-creators** — creator onboarding, first posts, issues
+- **#war-room-bugs** — real-time bug reports from beta users
+
+### Go/No-Go Checklist (Launch Day)
+
+Run at T-1h, T-30min, T-0:
+
+```
+T-1h Check:
+  [ ] DB accessible and responsive
+  [ ] Paystack webhook receiving test events
+  [ ] Error rate < 0.5% in last 24h
+  [ ] All P0 items from PRODUCTION_READINESS.md checked
+  [ ] 3+ admin users created and tested
+  [ ] Content moderation pipeline processing test posts
+  [ ] Creator content seeded (10+ posts live)
+  [ ] Campus ambassador links tested and working
+
+T-30min Check:
+  [ ] Analytics dashboard showing live data
+  [ ] Notification service sending test notifications
+  [ ] Feature flags verified (WALLET=OFF, LIVE=OFF initially)
+  [ ] On-call engineer confirmed available for 8h post-launch
+  [ ] Support channel (WhatsApp) staffed and responsive
+
+T-0 Launch:
+  [ ] Enable referral codes
+  [ ] Notify campus ambassadors: "GO"
+  [ ] Post first official platform content
+  [ ] Monitor: new user signups, first posts, error rate
+```
+
+---
+
+## 5. Operational Support Workflow
+
+### Support Tiers
+
+| Tier | Channel | Response SLA | Handler |
+|---|---|---|---|
+| T1 — User questions | WhatsApp group | 2h | Campus ambassador |
+| T2 — Account issues | Email / in-app | 4h | Ops team |
+| T3 — Financial issues | Dedicated WhatsApp | 1h | Ops + Founder |
+| T4 — Security / abuse | Internal | 30min | Founder / CTO |
+| T4 — Platform outage | #war-room-incidents | 15min | Engineering |
+
+### Moderation Workflow Staffing
+
+**Phase 0 (50 users):** Founder reviews all reports personally.  
+**Phase 1 (500 users):** 1 part-time moderator (3h/day). Queue reviewed 3×/day.  
+**Phase 2 (2,000 users):** 2 full-time moderators. Queue reviewed continuously 08:00–22:00 WAT.  
+**Phase 3 (10,000+ users):** 5 moderators + AI auto-enforcement for clear-cut violations.
+
+**Moderation Queue SLA:**
+- Critical (CSAM, violence, fraud) → 1h
+- High (hate speech, harassment) → 4h
+- Medium (spam, misinformation) → 24h
+- Low (copyright, misleading) → 72h
+
+### Incident Escalation Process
+
+```
+Level 1 — Degraded experience (slow feed, broken image uploads)
+  Handler: On-call engineer
+  Response: Fix or workaround within 2h
+  Communication: Status page update
+
+Level 2 — Feature outage (notifications not sending, DMs broken)
+  Handler: Lead engineer + PM
+  Response: Rollback or hotfix within 1h
+  Communication: In-app banner + ambassador notification
+
+Level 3 — Platform outage (login broken, feed empty)
+  Handler: All hands
+  Response: Rollback within 30min
+  Communication: SMS to ambassadors + email to registered users
+
+Level 4 — Financial incident (wallet balance incorrect, double-charge)
+  Handler: Founder mandatory
+  Response: Freeze affected wallets within 15min
+  Communication: Direct contact to affected users
+  Recovery: Manual reconciliation from LedgerEntry records
+```
+
+---
+
+## 6. Launch Analytics Dashboard
+
+### Metrics to Watch on Launch Day (hourly)
+
+| Metric | Target | Alert Threshold |
 |---|---|---|
-| D1 retention | Opened app on day after signup | > 40% |
-| D7 retention | Active in first week | > 25% |
-| D30 retention | Active in first month | > 15% |
-| Weekly posting streak | % creators with 7-day streak | > 20% of creators |
-| DAU/MAU ratio | Stickiness | > 25% |
+| New signups / hour | 20–50 on launch day | < 5 → check ambassador comms |
+| Onboarding completion rate | > 60% | < 40% → UX issue |
+| First post rate | > 25% of signups | < 15% → feed composer issue |
+| D1 retention | > 40% | < 25% → critical re-engagement needed |
+| Error rate | < 1% of requests | > 3% → incident |
+| Notification CTR | > 15% | < 8% → notification issue |
+| Feed load P95 | < 3s | > 5s → performance incident |
+| Moderation queue depth | < 20 items | > 50 → add reviewers |
 
-#### Engagement
-| Metric | Definition | Target |
-|---|---|---|
-| Posts/user/week | Active user post rate | > 3 |
-| Reactions/post | Avg likes+comments per post | > 10 |
-| DM sessions/week | Conversations initiated | > 2 per active user |
-| Feed scroll depth | Avg posts seen per session | > 10 |
-| Live attendance | Avg viewers per live session | > 20 |
+### Product Analytics (weekly cohort review)
 
-#### Creator Economy
-| Metric | Definition | Target (Phase 1) |
-|---|---|---|
-| Creator activation | % users who publish + get 10 followers | > 5% of all users |
-| First live rate | % creators who go live in D30 | > 30% |
-| Gift send rate | % active users who send gift/week | > 5% (Phase 1) |
-| Creator D30 retention | % creators still posting at D30 | > 50% |
-| Avg earnings/creator/month | Total gifts / active creators | ₦5,000+ (Phase 1) |
-
-#### Viral
-| Metric | Definition | Target |
-|---|---|---|
-| Referral k-factor | referred_signups / invites_sent | > 0.3 (target > 1.0) |
-| Campus share rate | campus_invite_links_clicked | > 100/campus/week |
-| Content share rate | content_shared events per post | > 5% of viewed posts |
-
----
-
-## Onboarding Analytics Events (track from day 1)
-
-```js
-// These must fire before launch — no analytics = no optimization
-eventQueue.track('onboarding', 'step_complete', { stepId, role, progressPercent })
-eventQueue.track('onboarding', 'step_skipped', { stepId, role })
-eventQueue.track('onboarding', 'activated', { role, stepsCompleted, daysSinceSignup })
-eventQueue.track('onboarding', 'interests_selected', { interestCount, interests })
-eventQueue.track('onboarding', 'school_matched', { schoolId, campusCount })
-eventQueue.track('onboarding', 'follow_completed', { followCount, method })
-```
-
-Funnel analysis in `growth.analytics.getActivationFunnel()` — run weekly.
-
----
-
-## School Onboarding Process
-
-### Target Schools (Phase 1 pilots)
-```
-Priority 1 (Week 5–6):   University of Lagos (UNILAG)
-Priority 1 (Week 5–6):   Lagos State University (LASU)
-Priority 2 (Week 8–10):  University of Ibadan (UI)
-Priority 2 (Week 8–10):  Covenant University
-Priority 3 (Week 11–12): Obafemi Awolowo University (OAU)
-```
-
-### School Onboarding Steps
-```
-Week -2: Ambassador recruitment (student social media outreach)
-Week -1: Ambassador briefing (platform walkthrough, WhatsApp group setup)
-Day -3:  Soft launch email to Ambassador's existing network
-Day -1:  Ambassador posts "early access" content on Instagram/WhatsApp
-Day 0:   Campus launch event (can be digital — Twitter Space)
-Week 1:  Daily check-ins with Ambassador
-Week 2:  First analytics review — is the campus viral loop working?
-```
-
-### School-Specific Features (enable after 50 students from same school)
-- School-specific group auto-created
-- "X students from your school" shown on onboarding
-- School-scoped trending feed
-- Campus leaderboard (top creators from your school)
-
----
-
-## Creator Recruitment Workflow
-
-### Phase 0 Creator Selection Criteria
-```
-Must have ALL of:
-  - Nigerian student/educator audience
-  - > 500 followers on TikTok/Instagram/Twitter/YouTube
-  - Content type: educational, lifestyle, entertainment (safe for campus)
-  - Active in last 30 days
-
-Bonus:
-  - University-affiliated (lecturer, alumni, current student)
-  - Existing community (WhatsApp group, Telegram channel)
-  - Willing to commit to 3 posts/week for first month
-```
-
-### Phase 0 Creator Outreach Template
-```
-Subject: Early Access — StudentOS is building Nigeria's student social platform
-
-Hi [Name],
-
-We're building the social platform for Nigerian university students, and we want you 
-as one of our founding creators.
-
-Why you: Your content on [platform] reaches exactly the audience we're building for.
-
-What you get:
-- First-mover advantage (top creators get highest algorithmic priority)
-- ₦50,000 in creator credits (gift coins for your audience)
-- Verified badge from day one
-- Direct line to our team (WhatsApp group)
-- Revenue sharing from gifts sent by your audience
-
-What we need:
-- 3 posts/week for the first 30 days
-- One live session in the first 2 weeks
-- Honest feedback on what we should build
-
-Interested? Reply and we'll send you early access in 24 hours.
-
-[Founder name]
-StudentOS
-```
-
-### Creator Activation Funnel
-```
-Invited (100) → Accepted (60%) → Set up profile (80%) → First post (70%) → First live (30%)
-→ First gift received (20%) → Still active D30 (50%)
-
-Bottleneck: First live (30%). Fix: personal outreach + scheduled live with team.
-```
-
----
-
-## API Documentation Readiness
-
-### Phase 0 — Internal Only
-No public API documentation needed. Internal JSDoc on all service methods.
-
-### Phase 1 — Partner API (school integrations)
-```
-Document:
-  - Auth: how to get API tokens (Base44 auth flow)
-  - Entities: GET endpoint patterns (read-only for partners)
-  - Webhooks: event subscriptions for LMS integrations
-
-Tool: Generate from JSDoc using TypeDoc
-Host: docs.studentos.app/api (Phase 2)
-```
-
-### Phase 2 — Developer Portal
-```
-OpenAPI spec generated from backend function schemas
-Interactive playground (Swagger UI or Redocly)
-SDK: @studentos/sdk (thin wrapper over REST API)
-Rate limits documented: 1,000 req/hour per token
-```
-
----
-
-## Operational Runbooks
-
-### Runbook: Wallet Balance Reconciliation
-```
-Trigger: Automated daily job mismatch alert OR user reports wrong balance
-
-Steps:
-1. Freeze wallet: update({ status: 'frozen' })
-2. Sum all LedgerEntry credits: SELECT SUM(amount) WHERE wallet_id AND entry_type='credit'
-3. Sum all LedgerEntry debits: SELECT SUM(amount) WHERE wallet_id AND entry_type='debit'
-4. Expected balance = credits - debits
-5. Compare to Wallet.balance
-6. If mismatch > 0: log INC-XXX, investigate Transaction history
-7. If correction needed: admin-authed credit/debit with reason 'reconciliation'
-8. Unfreeze wallet
-9. Notify user of resolution
-
-Expected time: 30 minutes
-Escalate if: mismatch > ₦10,000 (to Founder)
-```
-
-### Runbook: Paystack Webhook Failure
-```
-Trigger: PaymentIntent stuck in 'pending' for > 1 hour
-
-Steps:
-1. Check paystackWebhook function logs in Base44 dashboard
-2. Verify webhook received: Paystack dashboard → Events
-3. If event received but function failed: manually invoke with event payload
-4. If event never received: manually verify payment via Paystack API
-5. If payment confirmed: manually credit wallet via admin backend function
-6. Update PaymentIntent status to 'completed'
-7. Send user notification: "Your payment has been confirmed"
-
-Expected time: 45 minutes
-Escalate if: user reports before we detect (means our monitoring failed)
-```
-
-### Runbook: Live Stream Stuck "Live"
-```
-Trigger: LiveSession.status = 'live' for > 6 hours with 0 viewers
-
-Steps:
-1. Check: is stream provider still active? (stream_provider API)
-2. If not active: update LiveSession.status = 'ended', record duration
-3. If active: contact host directly (DM or WhatsApp)
-4. If no response after 30 min: admin terminate (live.service.endLiveSession)
-5. Log admin action in AdminAuditLog
-
-Expected time: 15 minutes
-```
-
-### Runbook: High FraudSignal Volume
-```
-Trigger: > 5 FraudSignals in 1 hour with same user_id
-
-Steps:
-1. Freeze user wallet immediately
-2. Review FraudSignal records: what triggered them?
-3. Check: is this a coordinated gifting farm?
-   - Multiple senders to same creator in short window
-   - New accounts (< 7 days old) sending large gifts
-4. If confirmed fraud: ban accounts, reverse transactions, log in AdminAuditLog
-5. If false positive: unfreeze wallet, resolve signals as 'false_positive'
-
-Expected time: 1 hour
-Escalate: All confirmed fraud to Founder (financial + legal implications)
-```
-
----
-
-## 12-Month Execution Roadmap
-
-### Month 1–2: Private Alpha + Critical Fixes
-```
-Milestone: 50 active users, 10 creators, 0 financial incidents
-Key work:
-  - Resolve all P0 technical debts (DEBT-001, 002, 007)
-  - Deploy Phase 0 feature set (social, creator, basic live)
-  - Recruit + onboard 10 founding creators
-  - Campus ambassador hired at UNILAG + LASU
-  - Moderation workflow operational
-```
-
-### Month 3–4: Campus Beta Launch
-```
-Milestone: 2,000 users, 5 campuses, first gift transactions
-Key work:
-  - Launch Paystack wallet topup
-  - Enable gift sending (after wallet fix audited for 30 days)
-  - Phase 1 Capacitor mobile build (iOS + Android)
-  - App Store submission (iOS)
-  - Push notifications live
-  - Onboarding A/B test: interests-first vs social-first
-```
-
-### Month 5–6: Growth + Creator Economy
-```
-Milestone: 5,000 users, ₦500k monthly gift volume
-Key work:
-  - AI feed ranking (feature flag 25%)
-  - Creator monetization: tips enabled at trust ≥ 40
-  - Payout automation (after 30 days manual payout, 0 incidents)
-  - Referral rewards (XP first, coins after anti-abuse confirmed)
-  - Campus leaderboards
-  - First creator success story content marketing
-```
-
-### Month 7–9: Platform Expansion
-```
-Milestone: 15,000 users, 3 creator tiers earned organically
-Key work:
-  - Marketplace (Phase 2 feature) — textbooks, study materials
-  - AI study assistant public beta
-  - School official account onboarding (verified institution accounts)
-  - React Query + performance optimizations (NestJS prep)
-  - Repository layer introduced (DEBT-017)
-  - Advertiser waitlist open
-```
-
-### Month 10–12: Monetization + Scale
-```
-Milestone: 30,000 users, ₦2M monthly revenue (gift + marketplace fees)
-Key work:
-  - Self-serve ad campaigns (Phase 3)
-  - Subscriptions (creator exclusive content)
-  - NestJS API migration (wallet service first)
-  - ClickHouse analytics (replace client-side approximations)
-  - Series A data room preparation
-  - Team scale: 5 engineers, 1 PM, 1 designer
-``
+| Metric | Target at 30 days |
+|---|---|
+| DAU/MAU (stickiness) | > 0.25 |
+| D7 retention | > 35% |
+| D30 retention | > 20% |
+| Creator activation rate | > 60% of creators post in week 1 |
+| Average posts per creator per week | > 3 |
+| Referral activation rate | > 50% of referred users become active |
+| First live session rate | > 30% of creators in month 1 |
+| Avg session duration | > 8 minutes |
