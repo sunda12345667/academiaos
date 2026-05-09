@@ -1,0 +1,78 @@
+{
+  "name": "PlatformAlert",
+  "type": "object",
+  "description": "Internal operational alert for platform health events. Consumed by admin dashboards and on-call systems.",
+  "properties": {
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "abuse_spike",
+        "payment_failure_rate",
+        "moderation_queue_backlog",
+        "fraud_cluster_detected",
+        "live_stream_abuse",
+        "recommendation_quality_drop",
+        "creator_churn_spike",
+        "ad_fraud_detected",
+        "system_error_rate",
+        "payout_failure_spike",
+        "new_school_verification",
+        "coordinated_abuse_detected"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ],
+      "default": "warning"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "description": "Structured alert payload (counts, thresholds, affected IDs)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "acknowledged",
+        "investigating",
+        "resolved",
+        "false_positive"
+      ],
+      "default": "open"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Admin UserProfile ID"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolution_notes": {
+      "type": "string"
+    },
+    "auto_generated": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "alert_type",
+    "severity",
+    "title"
+  ]
+}

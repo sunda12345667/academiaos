@@ -1,0 +1,95 @@
+{
+  "name": "AppealRequest",
+  "type": "object",
+  "description": "User appeal against a moderation action (suspension, ban, content removal). Governed by T&S.",
+  "properties": {
+    "appellant_id": {
+      "type": "string",
+      "description": "UserProfile ID filing the appeal"
+    },
+    "original_action": {
+      "type": "string",
+      "enum": [
+        "content_removed",
+        "account_suspended",
+        "account_banned",
+        "demonetized",
+        "ad_rejected",
+        "payout_blocked"
+      ],
+      "description": "What moderation action is being appealed"
+    },
+    "original_report_id": {
+      "type": "string",
+      "description": "ModerationReport ID that triggered the action"
+    },
+    "original_entity_type": {
+      "type": "string"
+    },
+    "original_entity_id": {
+      "type": "string"
+    },
+    "appeal_reason": {
+      "type": "string",
+      "description": "Appellant's explanation (required, min 50 chars)"
+    },
+    "evidence_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Supporting evidence uploaded by appellant"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "under_review",
+        "approved",
+        "rejected",
+        "escalated"
+      ],
+      "default": "pending"
+    },
+    "reviewer_id": {
+      "type": "string"
+    },
+    "review_notes": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "action_reversed",
+        "action_upheld",
+        "action_modified",
+        "escalated_to_senior"
+      ],
+      "description": "Final outcome after review"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "auto_eligible": {
+      "type": "boolean",
+      "default": true,
+      "description": "First-time appellants get expedited review"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal",
+      "description": "high=creator, urgent=financial_impact"
+    }
+  },
+  "required": [
+    "appellant_id",
+    "original_action",
+    "appeal_reason"
+  ]
+}

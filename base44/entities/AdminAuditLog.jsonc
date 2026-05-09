@@ -1,0 +1,98 @@
+{
+  "name": "AdminAuditLog",
+  "type": "object",
+  "description": "Immutable audit trail for all admin/moderator actions. Never deleted. Append-only.",
+  "properties": {
+    "actor_id": {
+      "type": "string",
+      "description": "UserProfile ID of the admin/moderator who took the action"
+    },
+    "actor_role": {
+      "type": "string",
+      "description": "Role at time of action (admin, moderator, etc.)"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "user_suspend",
+        "user_ban",
+        "user_unsuspend",
+        "user_unban",
+        "user_role_change",
+        "user_trust_score_override",
+        "content_remove",
+        "content_restore",
+        "content_feature",
+        "report_resolve",
+        "report_dismiss",
+        "report_escalate",
+        "ad_approve",
+        "ad_reject",
+        "ad_suspend",
+        "ad_budget_override",
+        "payout_approve",
+        "payout_reject",
+        "payout_force_complete",
+        "fraud_signal_resolve",
+        "fraud_signal_escalate",
+        "school_verify",
+        "school_suspend",
+        "creator_verify",
+        "creator_demonetize",
+        "platform_setting_change",
+        "live_session_terminate",
+        "live_session_warn",
+        "group_archive",
+        "group_transfer_ownership",
+        "marketplace_listing_remove",
+        "admin_note_add"
+      ],
+      "description": "What action was taken"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "What entity was acted upon: user, post, report, campaign, payout, etc."
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "before_state": {
+      "type": "object",
+      "description": "Snapshot of entity state before the action"
+    },
+    "after_state": {
+      "type": "object",
+      "description": "Snapshot of entity state after the action"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Mandatory reason for sensitive actions"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes (never shown to users)"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string"
+    },
+    "is_sensitive": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for ban, payout force, role changes \u2014 requires senior mod confirmation"
+    },
+    "confirmed_by": {
+      "type": "string",
+      "description": "UserProfile ID of the senior reviewer who confirmed sensitive action"
+    }
+  },
+  "required": [
+    "actor_id",
+    "actor_role",
+    "action",
+    "entity_type",
+    "entity_id"
+  ]
+}

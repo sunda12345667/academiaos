@@ -1,0 +1,222 @@
+{
+  "name": "AdCampaign",
+  "type": "object",
+  "description": "Advertiser campaign record. Governs budget, targeting, flight dates, and review lifecycle.",
+  "properties": {
+    "advertiser_id": {
+      "type": "string",
+      "description": "UserProfile ID of the advertiser"
+    },
+    "name": {
+      "type": "string",
+      "description": "Campaign display name"
+    },
+    "objective": {
+      "type": "string",
+      "enum": [
+        "awareness",
+        "engagement",
+        "course_enrollment",
+        "creator_follow",
+        "marketplace_traffic",
+        "app_install"
+      ],
+      "description": "Campaign objective drives optimization target"
+    },
+    "ad_format": {
+      "type": "string",
+      "enum": [
+        "sponsored_post",
+        "promoted_creator",
+        "promoted_live",
+        "banner",
+        "educational_ad",
+        "marketplace_ad"
+      ],
+      "default": "sponsored_post"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "active",
+        "paused",
+        "completed",
+        "rejected",
+        "suspended"
+      ],
+      "default": "draft"
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "not_submitted",
+        "pending",
+        "approved",
+        "rejected",
+        "needs_revision"
+      ],
+      "default": "not_submitted"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "reviewer_id": {
+      "type": "string",
+      "description": "Admin/mod who reviewed"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "budget_total": {
+      "type": "number",
+      "description": "Total campaign budget in kobo"
+    },
+    "budget_daily": {
+      "type": "number",
+      "description": "Daily spend cap in kobo"
+    },
+    "budget_spent": {
+      "type": "number",
+      "default": 0,
+      "description": "Total spend so far in kobo"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "bid_type": {
+      "type": "string",
+      "enum": [
+        "cpm",
+        "cpc",
+        "cpa",
+        "flat_rate"
+      ],
+      "default": "cpm"
+    },
+    "bid_amount": {
+      "type": "number",
+      "description": "Bid amount per unit in kobo"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "targeting": {
+      "type": "object",
+      "description": "Audience targeting config",
+      "properties": {
+        "schools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "age_range": {
+          "type": "object"
+        },
+        "interests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "geo": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "device": {
+          "type": "string",
+          "enum": [
+            "all",
+            "mobile",
+            "desktop"
+          ]
+        }
+      }
+    },
+    "creative": {
+      "type": "object",
+      "description": "Ad creative content",
+      "properties": {
+        "headline": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "media_url": {
+          "type": "string"
+        },
+        "cta_label": {
+          "type": "string"
+        },
+        "cta_url": {
+          "type": "string"
+        },
+        "promoted_entity_id": {
+          "type": "string"
+        },
+        "promoted_entity_type": {
+          "type": "string"
+        }
+      }
+    },
+    "impressions": {
+      "type": "number",
+      "default": 0
+    },
+    "clicks": {
+      "type": "number",
+      "default": 0
+    },
+    "conversions": {
+      "type": "number",
+      "default": 0
+    },
+    "ctr": {
+      "type": "number",
+      "default": 0,
+      "description": "Click-through rate 0\u20131"
+    },
+    "fraud_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0\u2013100 click fraud risk"
+    },
+    "fraud_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal reviewer notes"
+    }
+  },
+  "required": [
+    "advertiser_id",
+    "name",
+    "objective",
+    "ad_format",
+    "budget_total",
+    "bid_type"
+  ]
+}

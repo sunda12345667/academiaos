@@ -95,6 +95,24 @@ export const PERMISSIONS = {
   PLATFORM_SETTINGS: 'platform:settings',
   ADS_MANAGE_ANY: 'ads:manage:any',
   LIVE_MANAGE_ANY: 'live:manage:any',
+
+  // Operations & governance
+  AUDIT_LOG_VIEW: 'audit_log:view',
+  USER_BAN: 'user:ban',
+  USER_ROLE_CHANGE: 'user:role_change',
+  APPEAL_REVIEW: 'appeal:review',
+  APPEAL_ESCALATE: 'appeal:escalate',
+  TRUST_SCORE_OVERRIDE: 'trust_score:override',
+  CREATOR_VERIFY: 'creator:verify',
+  CREATOR_DEMONETIZE: 'creator:demonetize',
+  SCHOOL_VERIFY: 'school:verify',
+  PAYOUT_REVIEW: 'payout:review',
+  PAYOUT_FORCE_COMPLETE: 'payout:force_complete',
+  FRAUD_REVIEW: 'fraud:review',
+  FRAUD_ESCALATE: 'fraud:escalate',
+  PLATFORM_ALERT_VIEW: 'platform_alert:view',
+  PLATFORM_ALERT_ACK: 'platform_alert:ack',
+  OPS_ANALYTICS: 'ops:analytics',
 };
 
 // ─── Role → Permission Mapping ────────────────────────────────────────────────
