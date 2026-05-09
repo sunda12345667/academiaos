@@ -1,171 +1,216 @@
 # StudentOS — Production Readiness Checklist
-*v1.0 | 2026-05-09*
+
+**Date:** 2026-05-09  
+**Status:** Pre-launch audit  
+**Target:** Public beta launch
 
 ---
 
-## How to Use This Checklist
+## Launch Checklist (Gate: ALL P0 items must be ✅)
 
-Status codes:
-- ✅ DONE — implemented and verified
-- 🔄 IN PROGRESS — partially implemented
-- ⚠️ NEEDS WORK — identified, not started
-- ❌ BLOCKER — must complete before launch
+### 🔴 P0 — Blocking (must fix before any users)
+
+#### Security
+- [ ] **TD-02** Remove `stream_key` from `LiveSession` entity (client exposure)
+- [ ] **TD-15** Add admin role check to `wallet.service.reverseTransaction()`
+- [ ] Paystack webhook signature validation tested end-to-end in production
+- [ ] No secrets or API keys in any frontend code or entity fields
+- [ ] `Content-Security-Policy` header set on index.html (restrict script sources)
+- [ ] All file uploads go through `UploadFile` integration (no raw base64 on entities)
+
+#### Financial Integrity
+- [ ] **TD-01/18** Wallet optimistic lock implemented (version field + retry)
+- [ ] Paystack webhook idempotency tested (duplicate webhook delivery handled)
+- [ ] Test: gift send → wallet debit → creator credit (atomic sequence verified)
+- [ ] Test: payout request → approval → Paystack transfer → status update
+- [ ] Manual payout review queue operational before launch
+- [ ] Minimum KYC level enforcement tested for withdrawal
+
+#### Data Integrity
+- [ ] Wallet balance audit: sum of all LedgerEntries = Wallet.balance for each user
+- [ ] No orphaned PaymentIntent records in `pending` state > 30 min
+- [ ] Idempotency keys working correctly on wallet operations (no double-credits)
 
 ---
 
-## 1. Security Checklist
+### 🟡 P1 — Required for Stable Launch (fix in week 1)
+
+#### Performance
+- [ ] **TD-03** `markAllAsRead` converted to bulk backend function
+- [ ] **TD-06** `WatchEvent` retention job deployed (90-day TTL)
+- [ ] React Query `staleTime` verified (2 min) — no over-fetching
+- [ ] RealtimeBus reconnect on visibility change tested
+- [ ] Feed load time < 3s on 4G (tested on Lighthouse mobile simulation)
+- [ ] Lazy route code-splitting confirmed (each page its own JS chunk)
+
+#### Moderation
+- [ ] AI content moderation pipeline tested on post create
+- [ ] Report queue operational with at least 1 admin reviewer
+- [ ] Ban/suspend actions tested end-to-end (AccountStatusGuard confirms block)
+- [ ] Live session moderation modes tested (open → locked)
+- [ ] Admin audit log writing on every moderation action
+
+#### Operational
+- [ ] Error boundary catching and displaying user-friendly messages
+- [ ] `lib/infra/logger.js` — VITE_LOG_DRAIN_URL configured (or acceptable to skip at beta)
+- [ ] `lib/infra/performance.monitor.js` — VITE_METRICS_URL configured (or acceptable to skip)
+- [ ] Global unhandled error capture (window.onerror) verified firing
+- [ ] App bootstrap (`bootstrapInfrastructure()`) confirmed executing before React render
+
+---
+
+### 🟢 P2 — Pre-Scale (fix in first 2 weeks post-launch)
+
+#### Creator Economy
+- [ ] Creator tier upgrade notifications sending correctly
+- [ ] Monetization eligibility gating tested (500 followers + trust 60 minimum)
+- [ ] Gift coin purchase → coin balance → gift send flow tested
+- [ ] Tips flow tested (creator receives, ledger entry created)
+- [ ] Payout request → admin review → bank transfer tested
+
+#### Growth
+- [ ] Referral code generation tested (new user registration)
+- [ ] Referral attribution tested (code in URL → attribution stored)
+- [ ] Onboarding completion event firing to analytics
+- [ ] Notification caps working (5/day P2 cap tested)
+- [ ] Quiet hours enforced (no P2+ notifications 23:00–07:00 WAT)
+
+#### Notifications
+- [ ] `Notification` entity creating correctly for all social events
+- [ ] `NotificationProvider` realtime subscription updating unread count
+- [ ] Deep link routing working (notification → correct page)
+- [ ] Mark all read: all notifications marked, count resets to 0
+
+---
+
+## Security Checklist
 
 ### Authentication & Authorization
-- ✅ Auth handled by Base44 platform (token issuance, sessions)
-- ✅ RBAC system with 7 roles and 40+ permission constants (`services/auth/permissions.js`)
-- ✅ `RequirePermission` + `RequireRole` declarative UI guards
-- ✅ `AccountStatusGuard` blocks suspended/banned users from entire platform
-- ✅ `SensitiveActionGuard` requires confirmation for financial operations
-- ✅ `user.service.js` enforces field allowlist — client cannot escalate role/verification_status
-- ⚠️ Backend functions must validate `user.role` before admin operations (done in `paystackWebhook`, template exists)
-- ⚠️ All new backend functions must call `base44.auth.me()` and check permissions
-
-### Financial Security
-- ✅ Wallet idempotency keys on all mutations
-- ✅ Transaction + LedgerEntry written before Wallet balance mutation
-- ✅ Risk engine evaluates all payout and large-gift requests
-- ✅ KYC level enforced on withdrawal limits
-- ❌ BLOCKER: Wallet race condition (DEBT-001) — atomic debit backend function required
-- ⚠️ Paystack webhook signature validation — verify `paystackWebhook` function validates `x-paystack-signature` header
-- ⚠️ Payout to bank: human review required for amounts > ₦3,000 (LIMITS.REVIEW_THRESHOLD_KOBO) — review queue UI needed
+- [ ] All admin backend functions verify `user.role === 'admin'` before execution
+- [ ] `paystackWebhook` — signature validation with `PAYSTACK_SECRET_KEY`
+- [ ] User cannot escalate role via `updateProfile()` (field whitelist enforced)
+- [ ] User cannot access other users' wallet data (filter by `user_id` enforced)
+- [ ] Creator profile update — field whitelist enforced (no trust_score override)
 
 ### Data Privacy
-- ⚠️ User PII (email, phone) never stored in WatchEvent or analytics events — audit all eventQueue.track() calls
-- ❌ BLOCKER: `usePersonalization` module cache — cross-user data leak on shared browser (DEBT-007)
-- ⚠️ Creator payout bank details (account_number, bank_code) — ensure not logged anywhere
-- ⚠️ Message content — ensure never logged in logger.js output
+- [ ] No PII stored in analytics events (emails hashed, names excluded)
+- [ ] `FraudSignal` records only readable by admin role
+- [ ] `AdminAuditLog` records only readable by admin role
+- [ ] Blocked users cannot see each other's content (filter enforced in feed)
+- [ ] Private group content hidden from non-members
 
-### Content Security
-- ✅ Moderation pipeline with AI + rule-based content scoring
-- ✅ FraudSignal entity for abuse detection
-- ✅ ModerationReport → human review queue
-- ⚠️ Rate limiting on post creation (`report.service.checkPostRateLimit`) — ensure called before every Post.create()
-- ⚠️ Rate limiting on messages — `checkMessageRateLimit` — wire into MessagingProvider.sendMessage()
-
----
-
-## 2. Operational Checklist
-
-### Monitoring
-- ✅ Structured logger with correlation IDs (`lib/infra/logger.js`)
-- ✅ Performance monitor with SLO thresholds (`lib/infra/performance.monitor.js`)
-- ✅ Global error capture (unhandledrejection + error events) in `app-bootstrap.js`
-- ✅ Circuit breakers for AI, payment, media, realtime, moderation (`lib/infra/retry.js`)
-- ⚠️ Set `VITE_LOG_DRAIN_URL` environment variable pointing to logging service (Datadog/Axiom)
-- ⚠️ Set `VITE_METRICS_URL` environment variable for performance metrics drain
-- ⚠️ Sentry DSN: add `VITE_SENTRY_DSN` and wire `logger.setFatalHandler(Sentry.captureException)`
-- ⚠️ PlatformAlert entity → connect to PagerDuty/Slack webhook for critical alerts
-
-### Uptime & Reliability
-- ✅ ErrorBoundary on App level + route level + widget level (3 layers)
-- ✅ Circuit breakers prevent cascade failure from AI/payment provider outages
-- ✅ RealtimeBus reconnects on visibilitychange (stale > 30s)
-- ✅ event-queue DLQ for offline resilience
-- ⚠️ Paystack webhook: verify retry idempotency (webhook may fire multiple times — confirm idempotency key guards work)
-- ⚠️ Define SLOs formally: Feed P95 < 1.5s, Payment init < 3s, Auth < 500ms
-
-### Scaling
-- ⚠️ Base44 entity list() calls — add explicit sort + limit on ALL filter calls (prevent full table scans)
-- ⚠️ Audit all `filter({}, '-created_date', 2000)` calls — unbounded limits at scale
-- ⚠️ Identify top 5 most-read entities → add to react-query cache with appropriate staleTime
+### API Security
+- [ ] Rate limiting on post creation (checkPostRateLimit called before create)
+- [ ] Rate limiting on message sending (checkMessageRateLimit called)
+- [ ] Gift send — anti-self-gifting check enforced
+- [ ] Referral — self-referral guard enforced
 
 ---
 
-## 3. Payment Readiness Checklist
+## Scalability Checklist
 
-### Paystack Integration
-- ✅ `paystackWebhook` backend function exists
-- ✅ PaymentIntent entity tracks all inbound payments
-- ✅ Transaction + LedgerEntry written on confirmation
-- ❌ BLOCKER: Verify `x-paystack-signature` validation is implemented in `paystackWebhook`
-- ⚠️ Paystack test → live key migration: ensure `PAYSTACK_SECRET_KEY` is set in production secrets
-- ⚠️ Test webhook with Paystack CLI: `paystack events trigger charge.success`
-- ⚠️ Failed payment retry: PaymentIntent.verification_attempts tracked — add retry UI
+### Database
+- [ ] `WatchEvent` retention policy in place (90-day job scheduled)
+- [ ] `ContentRecommendation` pruning in place (14-day job scheduled)
+- [ ] `Notification` records — plan for archival after 90 days
+- [ ] `Post.engagement_score` — plan for async recompute (not blocking)
 
-### Payout Flow
-- ✅ PayoutRequest entity with risk scoring
-- ✅ Bank account verification fields
-- ⚠️ Manual review queue UI for PayoutRequests flagged for review
-- ⚠️ Payout gateway integration (Paystack Transfer API) — backend function needed
-- ⚠️ Test with sandbox account: minimum ₦100 withdrawal → verify LedgerEntry pair
+### Realtime
+- [ ] RealtimeBus tested under 50 concurrent subscriptions (manual test)
+- [ ] RealtimeBus reconnect on network offline → online verified
+- [ ] MessagingProvider — tested with 100+ messages in a conversation
+- [ ] NotificationProvider — tested with 200+ unread notifications
 
-### Gift Economy
-- ✅ GiftCatalogItem with creator_share_percent
-- ✅ Gift entity with platform fee split
-- ✅ Gifting service credits creator wallet after platform cut
-- ⚠️ Test gift → creator wallet credit → payout flow end-to-end in sandbox
-- ⚠️ Self-gifting detection wired in risk.engine
+### Feed
+- [ ] Feed tested with 1000+ posts in the DB (ensure ranking still fast)
+- [ ] Following feed fan-out capped at 8 authors (confirmed in feed.service)
+- [ ] Video feed tested with 50+ short_video posts
 
 ---
 
-## 4. Moderation Readiness Checklist
+## Moderation Readiness Checklist
 
-- ✅ AI moderation pipeline (rule-based fast-pass + LLM for borderline content)
-- ✅ ModerationReport entity with action pipeline
-- ✅ AdminAuditLog for all moderation actions
-- ✅ AppealRequest entity and reviewer flow
-- ✅ Trust score computed per user (basis for content weighting)
-- ⚠️ Moderation queue UI for admin/moderator role — not yet built (see pages/)
-- ⚠️ Content removals must set `Post.moderation_status = 'removed'` AND `Post.status = 'removed'`
-- ⚠️ Live session abuse: `terminate live session` action wired in admin ops
-- ⚠️ Report rate limiting: user cannot file > 5 reports/hour
-
----
-
-## 5. Creator Onboarding Readiness Checklist
-
-- ✅ CreatorProfile entity + tier progression system
-- ✅ Trust score formula implemented
-- ✅ Badge system (6 badges)
-- ✅ Creator analytics dashboard data structure
-- ✅ Monetization eligibility gates (trust + follower thresholds)
-- ⚠️ Creator onboarding UI flow — not yet built
-- ⚠️ Payout bank account setup UI — required before monetization
-- ⚠️ Creator verification request UI + admin review flow
-- ⚠️ Tips UI: gift button on creator posts + live sessions
+- [ ] At least 1 admin user created before public launch
+- [ ] Admin can access moderation report queue
+- [ ] Admin can suspend/ban users (AccountStatusGuard tested)
+- [ ] Admin can remove posts/comments
+- [ ] Content moderation AI pipeline active (or fallback: manual review queue)
+- [ ] Appeal request flow functional (user can submit, admin can review)
+- [ ] Live session termination by admin functional
+- [ ] Spam rate limiter tested (blocks >5 posts/hour)
+- [ ] Trust score computation running on creator analytics refresh
 
 ---
 
-## 6. Scalability Checklist
+## Payment Readiness Checklist
 
-| Threshold | Requirement | Status |
-|-----------|-------------|--------|
-| 1k DAU | All P0 debts resolved | ❌ DEBT-001,002,007 open |
-| 1k DAU | Feed load < 1.5s P95 | ⚠️ DEBT-005,008 open |
-| 5k DAU | WatchEvent batching | ⚠️ DEBT-009 open |
-| 5k DAU | Notification dedup/cap working | ✅ |
-| 10k DAU | Repository layer for migration | ⚠️ DEBT-017 open |
-| 10k DAU | ClickHouse analytics sink | ⚠️ Not started |
-| 50k DAU | NestJS migration started | ⚠️ Not started |
-| 100k DAU | Kafka + Redis + PostgreSQL | ⚠️ Not started |
+- [ ] Paystack secret key set in production environment
+- [ ] Paystack webhook URL registered in Paystack dashboard
+- [ ] `paystackWebhook` function deployed and accessible
+- [ ] Test deposit: ₦1,000 → wallet credited ₦1,000 (kobo: 100,000)
+- [ ] Test withdrawal: ₦1,000 min enforced, ₦100 fee deducted, bank transfer sent
+- [ ] Failed payment → `PaymentIntent.status = 'failed'` → no wallet credit
+- [ ] Duplicate webhook delivery → idempotent (no double credit)
+- [ ] Platform fee split tested (10% platform, 90% creator on sales)
+- [ ] Gift flow: coin deduct → naira value → 70% creator credit → 30% platform
 
 ---
 
-## 7. Pre-Launch Final Gate
+## Creator Onboarding Checklist
 
-### Must be ✅ before first real user:
-- [ ] DEBT-001 resolved (wallet atomic debit)
-- [ ] DEBT-002 resolved (audit log immutability)
-- [ ] DEBT-007 resolved (personalization cache privacy)
-- [ ] Paystack webhook signature verification confirmed
-- [ ] PAYSTACK_SECRET_KEY set in production
-- [ ] ErrorBoundary tested with intentional crash
-- [ ] Moderation pipeline tested with flagged content
-- [ ] Admin role tested: cannot access admin functions without role=admin
-- [ ] Payout flow tested end-to-end in Paystack sandbox
-- [ ] Gift → creator wallet credit → creator sees balance update (realtime)
-- [ ] markAllAsRead fixed (DEBT-004)
+- [ ] Creator profile auto-created on first creator role assignment
+- [ ] Trust score baseline (30) set on creation
+- [ ] Creator dashboard accessible and showing correct data
+- [ ] First post → view count, engagement score computing
+- [ ] Followers: `Follow` entity created, `follower_count` updated
+- [ ] Tier upgrade from `none` → `basic` at 50 followers (tested)
+- [ ] Tips toggle available at trust ≥ 40
+- [ ] Monetization toggle available at trust ≥ 60 + 500 followers
+- [ ] Live session create → start → end → duration recorded
+- [ ] Gift received during live → wallet credited → notification sent
 
-### Recommended before 100 users:
-- [ ] DEBT-004 (markAllAsRead backend function)
-- [ ] DEBT-005 (PostInteraction batch)
-- [ ] DEBT-009 (WatchEvent batching)
-- [ ] DEBT-011 (notification dispatch unified)
-- [ ] Sentry DSN connected
-- [ ] Log drain URL configured
-- [ ] At least 1 moderator role user created
+---
+
+## Operational Checklist
+
+### Monitoring (configure before launch)
+- [ ] Error rate monitoring (target: < 1% of requests)
+- [ ] Paystack webhook failure alerting (zero tolerance)
+- [ ] Wallet balance audit job (daily, auto-alert on mismatch)
+- [ ] Platform alert entity monitored by admin (open alerts resolved within 4h SLA)
+
+### On-Call Procedures
+- [ ] Runbook for: wallet frozen → how to unfreeze
+- [ ] Runbook for: Paystack webhook failure → manual reconciliation steps
+- [ ] Runbook for: creator live stream stuck in `live` status → admin force-end
+- [ ] Runbook for: moderation emergency (CSAM/violence) → immediate content removal + escalation
+
+### Backup & Recovery
+- [ ] Base44 data backup confirmed (platform-level)
+- [ ] Critical entity snapshots: Wallet, Transaction, LedgerEntry (verify backup frequency)
+- [ ] Recovery test: restore Wallet state from LedgerEntry sum (validate reconciler logic)
+
+---
+
+## Long-Term Platform Evolution Strategy
+
+### 6-Month Horizon
+1. NestJS API layer behind Base44 (gradual migration, service by service)
+2. PostgreSQL for financial data (Wallet, Transaction, LedgerEntry)
+3. Redis for session management, rate limiting, streak state
+4. BullMQ for async jobs (score recompute, notifications, cleanup)
+5. FCM push notifications (Android + iOS)
+
+### 12-Month Horizon
+1. Kafka event bus replacing direct service→service calls
+2. ClickHouse for analytics (replace client-side approximations)
+3. ML-powered feed ranking (replace heuristic ranking engine)
+4. ML-powered content moderation (reduce manual review load)
+5. Multi-region deployment (Lagos primary, CDN edge for media)
+
+### 24-Month Horizon
+1. Microservice extraction (Wallet Service, Notification Service as independent APIs)
+2. Real-time presence infrastructure (Redis pub/sub, dedicated WS gateway)
+3. Video transcoding pipeline (Mux or AWS MediaConvert)
+4. Creator monetization expansion (subscriptions, NFT certificates, live tickets)
+5. School ERP integration (LASU, UNILAG, etc. — timetables, results)

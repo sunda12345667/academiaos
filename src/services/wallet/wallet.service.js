@@ -422,6 +422,12 @@ async function getTransactionHistory(userId, { limit = 20, type, direction } = {
  * Reverse a completed transaction (admin action or chargeback)
  */
 async function reverseTransaction(transactionId, { reason, adminUserId }) {
+  // Security: only admin/moderator roles may reverse transactions
+  const adminProfiles = await base44.entities.UserProfile.filter({ id: adminUserId });
+  if (!adminProfiles[0] || !['admin', 'moderator'].includes(adminProfiles[0].role)) {
+    throw new Error('Forbidden: reverseTransaction requires admin role');
+  }
+
   const txns = await base44.entities.Transaction.filter({ id: transactionId });
   if (!txns.length) throw new Error('Transaction not found');
 

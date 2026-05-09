@@ -1,233 +1,227 @@
-# StudentOS — Complete Architecture Audit
-*Principal Platform Architect Review | v1.0 | 2026-05-09*
+# StudentOS — Full Architecture Audit
+
+**Date:** 2026-05-09  
+**Scope:** All service layers, entity schema, hooks, providers, realtime, analytics, fintech, growth  
+**Status:** Pre-launch consolidation review
 
 ---
 
 ## 1. System Inventory
 
-### Entities (23 total)
+### 1.1 Entity Schema (22 entities)
 
-| Entity | Owner Domain | Risk Level |
-|--------|-------------|------------|
-| UserProfile | Auth/Identity | 🔴 HIGH — central join target, mutated by 8+ services |
-| AcademicIdentity | Identity | 🟡 MEDIUM — under-used, overlaps UserProfile.school_id |
-| Post | Feed/Content | 🟡 MEDIUM — denormalized counters drift risk |
-| Comment | Feed/Content | 🟢 LOW |
-| PostInteraction | Engagement | 🟡 MEDIUM — N+1 query risk in getUserInteraction |
-| Follow | Social Graph | 🟡 MEDIUM — no composite index on (follower_id, following_id) |
-| Group | Community | 🟢 LOW |
-| GroupMembership | Community | 🟢 LOW |
-| Conversation | Messaging | 🟢 LOW |
-| Message | Messaging | 🔴 HIGH — unbounded growth, no archival strategy |
-| LiveSession | Live | 🟢 LOW |
-| WatchEvent | Analytics | 🔴 HIGH — write-heavy, unsuitable for relational DB at scale |
-| ContentRecommendation | Recommendations | 🟡 MEDIUM — stale records accumulate without TTL |
-| CreatorProfile | Creator Economy | 🟡 MEDIUM — analytics fields computed client-side |
-| Wallet | Fintech | 🔴 HIGH — balance on entity = race condition risk without DB locks |
-| Transaction | Fintech | 🔴 HIGH — append-only violated if update() called directly |
-| LedgerEntry | Fintech | 🔴 HIGH — same as Transaction |
-| PaymentIntent | Fintech | 🟡 MEDIUM — no cleanup for expired intents |
-| PayoutRequest | Fintech | 🟡 MEDIUM |
-| Gift | Fintech | 🟡 MEDIUM |
-| ModerationReport | Trust & Safety | 🟡 MEDIUM |
-| AdminAuditLog | Governance | 🔴 HIGH — must be truly append-only; Base44 update() must never be called |
-| AppealRequest | Governance | 🟢 LOW |
-| AdCampaign | Ads | 🟢 LOW |
-| GiftCatalogItem | Fintech | 🟢 LOW |
-| Notification | Notifications | 🟡 MEDIUM — per-user table scan on markAllAsRead() |
-| FraudSignal | Trust & Safety | 🟡 MEDIUM |
-| PlatformAlert | Ops | 🟢 LOW |
-| School | Identity | 🟢 LOW |
+| Entity | Owner Domain | Risk |
+|---|---|---|
+| `UserProfile` | Identity | HIGH — 40+ consumers, overloaded with onboarding/referral/achievement state |
+| `AcademicIdentity` | Identity | LOW — clean boundary |
+| `Post` | Content | MEDIUM — engagement_score denormalized, recalculated on every interaction |
+| `Comment` | Content | LOW |
+| `PostInteraction` | Engagement | MEDIUM — no TTL, grows unbounded |
+| `Follow` | Social Graph | MEDIUM — status enum used for block/mute (overloaded) |
+| `Group` | Community | LOW |
+| `GroupMembership` | Community | LOW |
+| `LiveSession` | Creator/Live | MEDIUM — stream_key stored client-side (security) |
+| `Conversation` | Messaging | LOW |
+| `Message` | Messaging | HIGH — unread_counts stored as JSON field on Conversation (N+1 risk) |
+| `Notification` | Comms | MEDIUM — no partitioning, will bottleneck at 1M+ records |
+| `Wallet` | Fintech | HIGH — balance field mutable without atomic lock |
+| `Transaction` | Fintech | LOW — immutable, well-structured |
+| `LedgerEntry` | Fintech | LOW — append-only |
+| `PaymentIntent` | Fintech | LOW |
+| `PayoutRequest` | Fintech | LOW |
+| `FraudSignal` | Trust & Safety | LOW |
+| `Gift` | Creator Economy | LOW |
+| `GiftCatalogItem` | Creator Economy | LOW |
+| `CreatorProfile` | Creator | MEDIUM — analytics denormalized (stale on large follower counts) |
+| `MarketplaceListing` | Marketplace | LOW |
+| `ModerationReport` | Moderation | LOW |
+| `AdminAuditLog` | Ops | LOW — append-only |
+| `AppealRequest` | Ops | LOW |
+| `AdCampaign` | Ads | LOW |
+| `WatchEvent` | Analytics | HIGH — write-heavy, no retention policy, will grow unbounded |
+| `ContentRecommendation` | AI | MEDIUM — served/clicked flags never cleaned up |
+| `PlatformAlert` | Ops | LOW |
+| `School` | Education | LOW |
+| `Course` | Education | LOW |
 
-### Services (34 files across 9 domains)
+### 1.2 Service Layer (27 services)
 
+| Service | Domain | Coupling Risk |
+|---|---|---|
+| `user.service.js` | Identity | HIGH — called from 12+ services |
+| `post.service.js` | Content | MEDIUM |
+| `engagement.service.js` | Engagement | HIGH — called from feed, creator, ranking |
+| `feed.service.js` | Feed | HIGH — coordinates 6+ services |
+| `ranking.engine.js` | Feed | MEDIUM — client-side only, correct |
+| `recommendation.service.js` | AI | MEDIUM |
+| `notification.service.js` | Comms | HIGH — called from everywhere |
+| `notification-events.js` | Comms | MEDIUM — fire-and-forget wrapper, good pattern |
+| `graph.service.js` | Social | MEDIUM |
+| `group.service.js` | Community | LOW |
+| `conversation.service.js` | Messaging | LOW |
+| `message.service.js` | Messaging | LOW |
+| `creator.service.js` | Creator | MEDIUM |
+| `live.service.js` | Live | LOW |
+| `watch.service.js` | Analytics | MEDIUM — dual write (WatchEvent + Post.view_count) |
+| `wallet.service.js` | Fintech | HIGH — no distributed lock |
+| `ledger.service.js` | Fintech | LOW |
+| `payment.service.js` | Fintech | MEDIUM |
+| `payout.service.js` | Fintech | LOW |
+| `gifting.service.js` | Fintech | MEDIUM |
+| `risk.engine.js` | Trust | LOW |
+| `moderation.service.js` | Moderation | MEDIUM |
+| `report.service.js` | Moderation | LOW |
+| `onboarding.service.js` | Growth | LOW |
+| `retention.service.js` | Growth | LOW |
+| `viral.service.js` | Growth | LOW |
+| `notification.intelligence.js` | Growth | MEDIUM — duplicates some notification.service logic |
+| `growth.analytics.js` | Growth | LOW |
+| `platform.ops.service.js` | Ops | LOW |
+| `trust.safety.service.js` | Ops | LOW |
+| `ad.platform.service.js` | Ops | LOW |
+| `admin.audit.service.js` | Ops | LOW |
+| `media.service.js` | Media | LOW |
+| `security-events.service.js` | Auth | LOW |
+| `viral.service.js` (growth) | Growth | LOW |
+
+---
+
+## 2. Critical Duplication Findings
+
+### 2.1 Notification Dispatch — CRITICAL OVERLAP
+
+**Problem:** Two paths for sending notifications:
+- `notification.service.js → createNotification()`
+- `notification.intelligence.js → sendIntelligentNotification()`
+
+Both call `base44.entities.Notification.create()`. Intelligence layer wraps the service layer, but callers inconsistently choose between them.
+
+**Rule to enforce:**
+- Financial/security notifications → `notification.service.createNotification()` directly (no caps, no quiet hours)
+- All social/growth notifications → `notification.intelligence.sendIntelligentNotification()`
+- Never call `base44.entities.Notification.create()` directly outside these two services
+
+### 2.2 Watch Events — Dual Write
+
+**Problem:** `watch.service.recordWatchEvent()` also updates `Post.view_count` directly. This creates two write paths for view counts: watch service AND engagement service.
+
+**Fix:** Remove `Post.view_count` update from `watch.service.js`. Engagement service owns view count. Watch service owns raw WatchEvent records only.
+
+### 2.3 Streak Computation — Two Locations
+
+**Problem:** Posting streak computed in `engagement.service.getPostingStreak()` AND referenced/estimated in `retention.service.detectStreakRisk()`. No shared primitive.
+
+**Fix:** Streak computation lives in `engagement.service` only. `retention.service` imports and calls it — does not reimplement.
+
+### 2.4 Creator Analytics Scatter
+
+**Problem:** Creator analytics data spread across:
+- `creator.service.getCreatorDashboard()`
+- `engagement.service.getCreatorSummary()`
+- `watch.service.getCreatorWatchAnalytics()`
+- `growth.analytics.getCreatorRetention()`
+
+No single "creator analytics" contract. Four callers, four different shapes.
+
+**Fix:** Define `CreatorAnalyticsSnapshot` type in `creator.service.js`. Other services feed into it. Dashboard always reads from this one shape.
+
+### 2.5 UserProfile Overload
+
+**Problem:** `UserProfile` entity carries:
+- Core identity (name, email, role)
+- Academic identity (overlaps with `AcademicIdentity` entity)
+- Onboarding state (completed_steps, activated flag)
+- Referral tracking (referral_code, referred_by, referral_count)
+- Achievement state (achievements_earned[], total_xp)
+- Growth flags (onboarding_complete, last_seen_at)
+- Wallet reference (implicit via user_id)
+
+This entity will become a write-contention bottleneck at scale. Multiple concurrent updates from social graph, onboarding, and analytics pipelines all targeting the same record.
+
+**Remediation:** Migrate onboarding state → `OnboardingState` entity. Migrate referral state → `ReferralRecord` entity. Keep `UserProfile` for identity + display only.
+
+---
+
+## 3. Coupling Risks
+
+### 3.1 Feed Service — Fan-Out Coordinator
+
+`feed.service.js` orchestrates 6+ downstream services: UserProfile, Follow, Post, CreatorProfile, AcademicIdentity, ranking.engine. Any one failure cascades. No circuit breaker applied.
+
+**Fix:** Wrap feed service calls with `breakers.ai.execute()` from `lib/infra/retry.js` for non-critical enrichments.
+
+### 3.2 Notification Everywhere Anti-Pattern
+
+`notification-events.js` is called from: engagement, social graph, messaging, wallet, live, moderation, growth, security events. It is the most-imported file in the codebase.
+
+At scale this becomes a single point of failure for all user-facing communications.
+
+**Fix:** Event-queue pattern — services emit domain events, a notification fanout worker subscribes and dispatches. Never call notification service from within another service synchronously.
+
+### 3.3 Wallet Service — Race Condition Window
+
+`wallet.service.creditWallet()` and `debitWallet()` perform a read-then-write without atomic lock:
 ```
-services/
-  auth/          permissions.js, security-events.service.js
-  feed/          feed.service.js, ranking.engine.js
-  engagement/    engagement.service.js
-  social/        graph.service.js, post.service.js, notification-events.js
-  community/     group.service.js
-  messaging/     conversation.service.js, message.service.js
-  live/          live.service.js
-  creator/       creator.service.js
-  recommendation/ recommendation.service.js
-  analytics/     watch.service.js
-  moderation/    moderation.service.js, report.service.js
-  notifications/ notification.service.js
-  wallet/        wallet.service.js, ledger.service.js, payment.service.js,
-                 payout.service.js, gifting.service.js, risk.engine.js
-  ops/           platform.ops.service.js, admin.audit.service.js,
-                 trust.safety.service.js, ad.platform.service.js
-  ai/            (personalization, study assistant, etc.)
-  growth/        onboarding.service.js, retention.service.js,
-                 viral.service.js, notification.intelligence.js,
-                 growth.analytics.js
-  media/         media.service.js
-  user/          user.service.js
+read wallet.balance → compute new balance → write wallet.balance
 ```
+Two concurrent gift receipts would both read the same balance and produce incorrect final state.
+
+**Fix (client-side):** Add `deduplicateKey` guard using idempotencyKey (already in place). Add optimistic locking: store `version` field on Wallet, reject updates where `version !== expected_version`.
+
+**Fix (migration):** PostgreSQL `SELECT FOR UPDATE` in stored procedure. Redis distributed lock (`SET wallet:{id}:lock NX PX 5000`).
+
+### 3.4 RealtimeBus — Single-Point Subscription
+
+All realtime events route through one RealtimeBus instance. A misconfigured handler that throws repeatedly will exhaust memory via event accumulation if the try/catch boundary fails.
+
+**Fix:** Already has per-handler isolation. Add max-retry eviction: if a handler throws 5 consecutive times, auto-unsubscribe and log alert.
 
 ---
 
-## 2. Architecture Issues Found
+## 4. Scaling Bottlenecks
 
-### 🔴 CRITICAL
-
-**C1: UserProfile used as a God Object**
-- 8+ services write directly to UserProfile with different field sets
-- Fields: school_id, preferences, onboarding_completed_steps, achievements_earned, total_xp, referral_code, referred_by, follower_count, last_seen_at, referral_count, referral_activated
-- Risk: Concurrent writes cause lost updates (no optimistic locking)
-- Fix: Segment into domain-owned sub-entities (IdentityProfile, GrowthProfile) or use versioned partial updates with server-side merge
-
-**C2: Wallet Balance Race Condition**
-- `wallet.balance` is read-modify-write in JS (getOrCreateWallet → update balance)
-- No SELECT FOR UPDATE equivalent in Base44 client SDK
-- Concurrent gift sends or purchases can corrupt balance
-- Fix: All Wallet mutations must go through a single backend function with distributed lock. Add `wallet_version` field for optimistic concurrency detection on client.
-
-**C3: AdminAuditLog mutability**
-- `admin.audit.service.js` calls `base44.entities.AdminAuditLog.update()` in some flows
-- AdminAuditLog is spec'd as append-only immutable
-- Fix: Remove ALL update() calls. Add confirmed_by via create() of a new ConfirmationLog record, or a separate confirmation field set only once via a guarded backend function.
-
-**C4: WatchEvent write volume**
-- WatchEvent created on every scroll impression + video watch event
-- Impression debounce lives only in hook — if hook unmounts mid-debounce, impressions fire anyway
-- On 10k DAU: ~500k WatchEvent records/day in relational DB
-- Fix: Client-side batching in event-queue (buffer 20 events → flush as bulk insert). Medium-term: separate OLAP sink.
-
-**C5: Notification.markAllAsRead() — O(n) individual updates**
-- Fetches ALL unread → loops → individual update per notification
-- On users with 500 unread: 500 sequential API calls
-- Fix: Backend function with `UPDATE ... WHERE recipient_id = X AND is_read = false`
-
-### 🟡 HIGH
-
-**H1: PostInteraction N+1 in getUserInteraction()**
-- `getUserInteraction(postId, profileId)` fetches all interactions then filters client-side
-- FeedContainer renders 20 posts — each calls getUserInteraction = 20 separate queries
-- Fix: Batch interaction lookup by postId array; cache per-session in react-query
-
-**H2: Feed ranking computed client-side on every render**
-- `ranking.engine.js` runs full sort + decay computation in JavaScript on each feed refresh
-- On large post sets: main thread blocking
-- Fix: Move `computeEngagementScore()` to a `useMemo` with stable dependency. Cache ranked result for 30s.
-
-**H3: ContentRecommendation records accumulate without TTL**
-- `expires_at` field exists but no cleanup job removes expired records
-- Risk: Entity table grows unbounded
-- Fix: Scheduled cleanup backend function (weekly) deleting `expires_at < now`
-
-**H4: Duplicate notification dispatch paths**
-- `notification-events.js` calls `notificationService.createNotification()`
-- `notification.intelligence.js` also calls `notificationService.createNotification()`
-- Callers sometimes use both, sometimes one directly
-- Risk: Duplicate notifications, inconsistent fatigue prevention
-- Fix: ALL notification dispatch must go through `notification.intelligence.sendIntelligentNotification()`. Remove direct calls to `notificationService.createNotification()` from feature code.
-
-**H5: RealtimeBus subscription leak on fast remount**
-- If component unmounts before subscribe() resolves, cleanup fn may not run correctly
-- Risk: Orphaned subscription handlers accumulate over navigation cycles
-- Fix: Add subscription ID registry to RealtimeBus; `cleanup()` clears by ID regardless of timing.
-
-**H6: Follow graph fan-out unbounded**
-- `feed.service._fetchFollowingPosts()` fetches following list, then 1 query per followed user
-- Capped at 5 currently but still 6 sequential queries on home feed load
-- Fix: Single query with `author_id IN [followingIds]` filter; move cap to server-side
-
-**H7: CreatorProfile analytics computed on demand**
-- `refreshCreatorAnalytics()` fetches posts, profile, interactions each time
-- Called after every new follower, post, live session end
-- Risk: Write amplification — popular creators trigger expensive re-computations constantly
-- Fix: Debounce with 5-min cooldown; move to scheduled background job (5-min interval)
-
-**H8: Module-level cache in usePersonalization**
-- `_profileCache` is a module-level Map — shared across all component instances
-- Never cleared on logout — stale profile bleeds to next user on same browser session
-- Fix: Clear on auth context change (logout event). Move cache to AuthContext or sessionStorage.
-
-### 🟢 MEDIUM
-
-**M1: AcademicIdentity entity under-utilized**
-- Created but `school_id`, `department`, `level` also stored on UserProfile
-- Causes duplication and sync risk
-- Recommendation: AcademicIdentity is the canonical source; remove fields from UserProfile
-
-**M2: graphService.getSuggestedUsers() overlaps onboarding.getOnboardingSuggestions()**
-- Both do subject + school scoring of user suggestions
-- Fix: onboarding service delegates to graphService for suggestions
-
-**M3: Growth analytics duplicates creator analytics**
-- `getCreatorRetention()` in growth.analytics.js overlaps `getCreatorDashboard()` in creator.service.js
-- Fix: growth.analytics.js should aggregate from creator.service — no raw entity queries
-
-**M4: event-queue tracks overlap with notification.intelligence tracks**
-- Both fire analytics events for notification sends
-- Fix: notification.intelligence is the single source; event-queue.track in that module only
-
-**M5: PaymentIntent.expires_at not enforced**
-- Expired intents remain in `created` status forever — pollutes webhook matching
-- Fix: Backend function to expire stale intents (>30min in `created` status)
-
-**M6: FraudSignal.auto_action_taken is a string, not enum**
-- Inconsistent values: 'wallet_frozen', 'payout_blocked', undefined
-- Fix: Add enum to entity schema; enforce in risk.engine.js
+| Bottleneck | Current State | Scale Risk | Mitigation |
+|---|---|---|---|
+| `Post.engagement_score` recompute | On every interaction | HIGH at 1k+ concurrent users | Move to async background job |
+| `Notification` table full scan for unread | Filter by recipient_id + is_read | HIGH at 100k+ notifications | Add composite index (recipient_id, is_read, created_date) |
+| `WatchEvent` unbounded growth | No TTL, no archival | HIGH — will hit DB limits | 90-day retention policy, archive to cold storage |
+| `markAllAsRead` N+1 | N individual UPDATE calls | HIGH | Single bulk UPDATE WHERE |
+| Feed fan-out | Client-side, capped at 8 follows | MEDIUM | Acceptable at MVP, needs server fan-out at 10k+ follows |
+| `getCreatorSummary` | 50-post scan per call | MEDIUM | Cache result 5 min (react-query stale time) |
+| `RealtimeBus` subscription per entity | 1 WS connection per entity type | LOW at MVP | Multiplexed at scale |
 
 ---
 
-## 3. Service Ownership Map
+## 5. Security Risks
 
-| Domain | Owns | Must NOT touch |
-|--------|------|----------------|
-| `feed/` | Post reads, ranking | PostInteraction writes |
-| `engagement/` | PostInteraction, Post counters | Feed ranking |
-| `social/` | Follow, notification dispatch | UserProfile fields beyond follower_count |
-| `community/` | Group, GroupMembership | Post content |
-| `messaging/` | Conversation, Message | Feed |
-| `creator/` | CreatorProfile, tier, trust | Wallet balances |
-| `wallet/` | Wallet, Transaction, LedgerEntry | UserProfile |
-| `notifications/` | Notification entity | Delivery timing/priority (→ notification.intelligence) |
-| `growth/` | Onboarding state, achievements, referrals | CreatorProfile analytics (→ creator.service) |
-| `ops/` | AdminAuditLog, PlatformAlert | User financial data |
-| `moderation/` | ModerationReport | Wallet operations |
+| Risk | Severity | Location | Fix |
+|---|---|---|---|
+| `stream_key` stored on `LiveSession` entity (client-accessible) | CRITICAL | `LiveSession.stream_key` | Move to server-only secret store |
+| No rate limiting on `Post.create` client-side | HIGH | `post.service.js` | Enforce `report.service.checkPostRateLimit()` before every create |
+| Client-side privilege escalation blocked by field whitelist | MEDIUM | `user.service.updateProfile()` | Good — maintain whitelist strictly |
+| `reverseTransaction()` available to any caller | HIGH | `wallet.service.js` | Add `adminUserId` role check before execution |
+| `base64` assets stored directly on entity fields | MEDIUM | Potential misuse | `field_size_limits` rule already documented — enforce at API layer |
+| No CSRF protection on `paystackWebhook` beyond signature | LOW | `functions/paystackWebhook` | Signature validation exists — acceptable |
 
 ---
 
-## 4. Scaling Bottlenecks Priority Matrix
+## 6. Unclear Ownership
 
-| Bottleneck | Impact | Effort | Priority |
-|------------|--------|--------|----------|
-| Wallet race condition (C2) | 🔴 Data corruption | High | P0 |
-| markAllAsRead O(n) (C5) | 🔴 UX + server | Low | P0 |
-| WatchEvent volume (C4) | 🔴 DB growth | Medium | P0 |
-| PostInteraction N+1 (H1) | 🟡 Performance | Medium | P1 |
-| Client-side feed ranking (H2) | 🟡 UX | Low | P1 |
-| Realtime subscription leak (H5) | 🟡 Memory | Medium | P1 |
-| ContentRecommendation TTL (H3) | 🟢 DB bloat | Low | P2 |
-| Creator analytics write amp (H7) | 🟢 Server load | Medium | P2 |
-| Personalization cache (H8) | 🟢 Privacy | Low | P2 |
+| Area | Problem | Resolution |
+|---|---|---|
+| `notification.intelligence.js` vs `notification.service.js` | Both dispatch notifications | Intelligence layer owns dispatch, service layer owns CRUD |
+| `viral.service.js` vs `growth.analytics.js` | Both have referral stats functions | `viral.service` owns referral ops, `growth.analytics` owns aggregate metrics |
+| `engagement.service` vs `watch.service` | Both update view counts | `engagement.service` owns Post counters, `watch.service` owns WatchEvent records |
+| `moderation.service` vs `trust.safety.service` | Both compute risk scores | `trust.safety.service` owns risk scoring, `moderation.service` owns content pipeline |
 
 ---
 
-## 5. Base44 Lock-in Risks
+## 7. State Fragmentation
 
-| Risk | Severity | Migration Path |
-|------|----------|---------------|
-| `base44.entities.X.filter()` used directly in 34 service files | Medium | Extract to repository pattern (`repositories/` layer) — all entity access via typed repo |
-| `base44.integrations.Core.InvokeLLM()` scattered in 5+ services | Medium | Centralize in `services/ai/ai.gateway.js` — single integration point |
-| `base44.auth.me()` called in multiple hooks | Low | Already gated through `useCurrentUser` — acceptable |
-| Realtime via `base44.entities.X.subscribe()` gated behind RealtimeBus | ✅ GOOD | Migration-safe |
-| Analytics via `base44.analytics.track()` + `event-queue` | ✅ GOOD | Swappable drain URL |
-
-**Recommended: Repository Layer**
-```js
-// repositories/post.repository.js (example pattern)
-export const PostRepository = {
-  findById: (id) => base44.entities.Post.filter({ id }).then(r => r[0]),
-  findByAuthor: (authorId, limit) => base44.entities.Post.filter({ author_id: authorId }, '-created_date', limit),
-  findPublished: (filter, limit) => base44.entities.Post.filter({ ...filter, status: 'published', moderation_status: 'clean' }, '-engagement_score', limit),
-  create: (data) => base44.entities.Post.create(data),
-  update: (id, data) => base44.entities.Post.update(id, data),
-};
-```
-This creates a migration boundary — NestJS migration only touches repositories, not services.
+| State | Locations | Problem |
+|---|---|---|
+| Unread notification count | `NotificationProvider` (runtime) + `Notification.is_read` (DB) | Source of truth: DB. Provider caches. Drift possible on concurrent mark-read. |
+| User follower count | `UserProfile.follower_count` (denorm) + `Follow` records (source) | Denorm can drift on concurrent follows. Needs eventual-consistency reconciler. |
+| Creator post count | `CreatorProfile.total_posts` + actual `Post` count | Recalculated in `refreshCreatorAnalytics()` — fine if called consistently |
+| Wallet balance | `Wallet.balance` (denorm) + `LedgerEntry` sum (source) | Wallet balance must always equal sum of LedgerEntries. Auditor job needed. |
+| Onboarding progress | `UserProfile.onboarding_completed_steps[]` (flat array) | Non-queryable. Cannot find "all users who skipped step X" without full scan. |

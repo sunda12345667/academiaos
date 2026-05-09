@@ -84,15 +84,8 @@ export async function recordWatchEvent({
     exited_at_seconds: exitedAtSeconds ?? Math.round(watchDuration),
   }).catch(() => {});
 
-  // Update post engagement if significant watch (>30% of content)
-  if (contentType === 'post' && completionRate >= 0.3) {
-    base44.entities.Post.filter({ id: contentId }).then(posts => {
-      if (!posts.length) return;
-      const post = posts[0];
-      const currentViews = post.view_count || 0;
-      return base44.entities.Post.update(contentId, { view_count: currentViews + 1 });
-    }).catch(() => {});
-  }
+  // NOTE: Post.view_count is owned by engagement.service — do NOT update it here.
+  // watch.service owns WatchEvent records only. Dual-write removed (TD-10).
 }
 
 /**
