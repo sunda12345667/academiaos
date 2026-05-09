@@ -8,19 +8,25 @@
 
 // ─── Role Hierarchy ───────────────────────────────────────────────────────────
 export const ROLES = {
-  STUDENT: 'student',
-  EDUCATOR: 'educator',
-  CREATOR: 'creator',
-  SCHOOL_ADMIN: 'school_admin',
-  MODERATOR: 'moderator',
-  ADMIN: 'admin',
+  STUDENT:     'student',
+  EDUCATOR:    'educator',
+  CREATOR:     'creator',
+  ADVERTISER:  'advertiser',
+  SCHOOL_ADMIN:'school_admin',
+  MODERATOR:   'moderator',
+  ADMIN:       'admin',
 };
 
-// Higher index = higher privilege level
+/**
+ * Higher index = higher privilege level.
+ * ADVERTISER sits alongside CREATOR — neither inherits from the other.
+ * Both are below SCHOOL_ADMIN for platform trust purposes.
+ */
 const ROLE_HIERARCHY = [
   ROLES.STUDENT,
   ROLES.EDUCATOR,
   ROLES.CREATOR,
+  ROLES.ADVERTISER,
   ROLES.SCHOOL_ADMIN,
   ROLES.MODERATOR,
   ROLES.ADMIN,
@@ -68,10 +74,27 @@ export const PERMISSIONS = {
   USER_BAN: 'user:ban',
   CONTENT_REMOVE: 'content:remove',
 
+  // Advertiser permissions
+  ADS_CREATE: 'ads:create',
+  ADS_MANAGE_OWN: 'ads:manage:own',
+  ADS_VIEW_ANALYTICS: 'ads:view:analytics',
+
+  // Creator-specific permissions
+  LIVE_STREAM: 'live:stream',
+  PAID_CONTENT_CREATE: 'paid_content:create',
+  TIP_RECEIVE: 'tip:receive',
+
+  // Identity & verification permissions
+  VERIFICATION_REQUEST: 'verification:request',
+  VERIFICATION_REVIEW: 'verification:review',
+  TRUST_SCORE_VIEW: 'trust_score:view',
+
   // Admin permissions
   ADMIN_DASHBOARD: 'admin:dashboard',
   SCHOOL_MANAGE: 'school:manage',
   PLATFORM_SETTINGS: 'platform:settings',
+  ADS_MANAGE_ANY: 'ads:manage:any',
+  LIVE_MANAGE_ANY: 'live:manage:any',
 };
 
 // ─── Role → Permission Mapping ────────────────────────────────────────────────
@@ -124,6 +147,26 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.WALLET_VIEW_OWN,
     PERMISSIONS.WALLET_WITHDRAW,
     PERMISSIONS.REPORT_CREATE,
+    PERMISSIONS.LIVE_STREAM,
+    PERMISSIONS.PAID_CONTENT_CREATE,
+    PERMISSIONS.TIP_RECEIVE,
+    PERMISSIONS.VERIFICATION_REQUEST,
+  ],
+  [ROLES.ADVERTISER]: [
+    PERMISSIONS.POST_CREATE,
+    PERMISSIONS.POST_EDIT_OWN,
+    PERMISSIONS.POST_DELETE_OWN,
+    PERMISSIONS.COMMENT_CREATE,
+    PERMISSIONS.COMMENT_DELETE_OWN,
+    PERMISSIONS.MARKETPLACE_LIST,
+    PERMISSIONS.MARKETPLACE_PURCHASE,
+    PERMISSIONS.WALLET_VIEW_OWN,
+    PERMISSIONS.WALLET_WITHDRAW,
+    PERMISSIONS.REPORT_CREATE,
+    PERMISSIONS.ADS_CREATE,
+    PERMISSIONS.ADS_MANAGE_OWN,
+    PERMISSIONS.ADS_VIEW_ANALYTICS,
+    PERMISSIONS.VERIFICATION_REQUEST,
   ],
   [ROLES.SCHOOL_ADMIN]: [
     PERMISSIONS.POST_CREATE,
@@ -148,14 +191,22 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.SCHOOL_MANAGE,
   ],
   [ROLES.MODERATOR]: [
+    PERMISSIONS.POST_CREATE,
+    PERMISSIONS.POST_EDIT_OWN,
+    PERMISSIONS.POST_DELETE_OWN,
     PERMISSIONS.POST_DELETE_ANY,
+    PERMISSIONS.COMMENT_CREATE,
+    PERMISSIONS.COMMENT_DELETE_OWN,
     PERMISSIONS.COMMENT_DELETE_ANY,
     PERMISSIONS.GROUP_MANAGE_ANY,
+    PERMISSIONS.GROUP_BAN_MEMBER,
     PERMISSIONS.CONTENT_REMOVE,
     PERMISSIONS.REPORT_REVIEW,
     PERMISSIONS.USER_SUSPEND,
     PERMISSIONS.WALLET_VIEW_OWN,
     PERMISSIONS.REPORT_CREATE,
+    PERMISSIONS.VERIFICATION_REVIEW,
+    PERMISSIONS.TRUST_SCORE_VIEW,
   ],
   [ROLES.ADMIN]: Object.values(PERMISSIONS),
 };
@@ -218,6 +269,51 @@ export function getPermissionsForRole(role) {
   return ROLE_PERMISSIONS[role] || [];
 }
 
+/**
+ * Check if a profile is allowed to access the platform
+ * Returns { allowed: bool, reason: string }
+ */
+export function checkAccountAccess(profile) {
+  if (!profile) return { allowed: false, reason: 'unauthenticated' };
+  if (profile.account_status === 'banned')    return { allowed: false, reason: 'banned' };
+  if (profile.account_status === 'suspended') return { allowed: false, reason: 'suspended' };
+  if (profile.account_status === 'pending_verification') return { allowed: true, reason: 'pending_verification' };
+  return { allowed: true, reason: null };
+}
+
+/**
+ * Check if a profile has a sufficient verification level for a feature
+ * Levels: 'none' | 'email' | 'identity' | 'educator' | 'school'
+ */
+export function hasVerification(profile, requiredLevel) {
+  const levels = ['none', 'email_verified', 'id_verified', 'educator_verified'];
+  const userLevel = levels.indexOf(profile?.verification_status || 'unverified');
+  const required  = levels.indexOf(requiredLevel);
+  return userLevel >= required;
+}
+
+/**
+ * Whether the user is a monetization-eligible account
+ * (creator, educator, or advertiser with wallet withdraw permission)
+ */
+export function isMonetizationEligible(profile) {
+  if (!profile) return false;
+  return hasPermission(profile.role, PERMISSIONS.WALLET_WITHDRAW);
+}
+
+/**
+ * Derive trust tier from profile for UI display.
+ * Future: Replace with server-computed trust_score field on UserProfile.
+ */
+export function getTrustTier(profile) {
+  if (!profile) return 'unknown';
+  if (profile.account_status !== 'active') return 'restricted';
+  if (profile.verification_status === 'educator_verified') return 'verified_educator';
+  if (profile.verification_status === 'id_verified')       return 'verified';
+  if (profile.verification_status === 'email_verified')    return 'standard';
+  return 'basic';
+}
+
 export default {
   hasPermission,
   hasAllPermissions,
@@ -225,6 +321,10 @@ export default {
   roleAtLeast,
   canPerformAction,
   getPermissionsForRole,
+  checkAccountAccess,
+  hasVerification,
+  isMonetizationEligible,
+  getTrustTier,
   ROLES,
   PERMISSIONS,
 };

@@ -111,6 +111,107 @@ All rollbacks are synchronous snapshot-restores — no re-fetch needed.
 
 ---
 
+---
+
+## Identity & Trust Architecture
+
+### RBAC Roles (ordered by privilege)
+
+| Role | Key Capabilities |
+|---|---|
+| `student` | Post, comment, group, marketplace, wallet view |
+| `educator` | + courses, withdraw, group ban |
+| `creator` | + live stream, paid content, tips, verification request |
+| `advertiser` | + ads create/manage, analytics |
+| `school_admin` | + delete any, manage any group, suspend users, school manage |
+| `moderator` | + delete any, content remove, verification review, trust score view |
+| `admin` | All permissions |
+
+### Permission Helpers
+
+```js
+import { usePermission } from '@/hooks/usePermission';
+const { can, canAny, isAtLeastRole, trustTier, accountAccess } = usePermission();
+
+// UI gating
+{can(PERMISSIONS.COURSE_CREATE) && <CreateCourseButton />}
+
+// Ownership-aware
+{canOnResource(PERMISSIONS.POST_DELETE_ANY, post.author_id) && <DeleteButton />}
+```
+
+### Identity Hook
+
+```js
+import useIdentity from '@/hooks/useIdentity';
+const { isVerifiedEducator, isCreator, trustTier, schoolId, kycLevel } = useIdentity();
+```
+
+### Declarative Guards
+
+```jsx
+// Permission gate (UI element)
+<RequirePermission permission={PERMISSIONS.ADMIN_DASHBOARD}>
+  <AdminLink />
+</RequirePermission>
+
+// Role gate (UI element)
+<RequireRole role={ROLES.MODERATOR} atLeast>
+  <ModerationPanel />
+</RequireRole>
+
+// Route guard (in App.jsx)
+<Route element={<RequireRole role={ROLES.ADMIN} atLeast asRoute />}>
+  <Route path="/admin" element={<AdminPage />} />
+</Route>
+```
+
+### Account Status Enforcement
+
+`AccountStatusGuard` (in AppShell) hard-blocks `suspended` and `banned` users with a dedicated UI — they never reach any page.
+
+### Sensitive Action Confirmation
+
+```jsx
+<SensitiveActionGuard
+  trigger={<Button>Withdraw Funds</Button>}
+  title="Confirm withdrawal"
+  description="₦5,000 will be sent to your linked bank account."
+  onConfirm={handleWithdraw}
+/>
+```
+
+### Security Events
+
+All security-relevant events write `Notification` records and are delivered via RealtimeBus:
+
+```js
+import securityEvents from '@/services/auth/security-events.service';
+
+await securityEvents.loginAlert(profileId, { device: 'Chrome/Mac', location: 'Lagos' });
+await securityEvents.accountSuspended(profileId, 'Spam violation');
+await securityEvents.verificationApproved(profileId, 'educator');
+await securityEvents.contentRemoved(profileId, 'post', 'Hate speech');
+```
+
+### Trust Tiers
+
+Computed client-side from `verification_status` (future: server `trust_score`):
+
+| Tier | Requirements | UI Signal |
+|---|---|---|
+| `basic` | No verification | No badge |
+| `standard` | Email verified | Email badge |
+| `verified` | ID verified | Verified badge |
+| `verified_educator` | Educator verified | Educator badge |
+| `restricted` | Suspended/banned | Restricted badge |
+
+### updateProfile Field Whitelist
+
+`user.service.js` enforces a server-side-style allowlist — clients can NEVER escalate `role`, `verification_status`, or `account_status` through `updateProfile`. Blocked fields are silently dropped.
+
+---
+
 ## Rules: What Goes Where
 
 | Concern | Location | Rule |
