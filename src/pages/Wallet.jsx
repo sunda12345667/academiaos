@@ -1,194 +1,251 @@
 /**
- * Wallet Page — Financial Hub
- * Reads from WalletProvider (realtime) via useWallet hook.
- * All balance/transaction state is live — no local fetch needed.
+ * Wallet — Financial hub matching design reference
  */
 import { useState } from 'react';
 import { useWallet } from '@/hooks/useWallet';
-import {
-  Wallet as WalletIcon, ArrowDownLeft, ArrowUpRight,
-  Plus, Send, CreditCard, TrendingUp, RefreshCw, ShieldCheck
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Smartphone, Gift, CreditCard, ShoppingCart, ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
-const TX_TYPE_LABEL = {
-  deposit: 'Wallet Top-up',
-  withdrawal: 'Bank Transfer',
-  course_purchase: 'Course Purchase',
-  course_sale: 'Course Sale',
-  marketplace_purchase: 'Purchase',
-  marketplace_sale: 'Sale',
-  subscription_payment: 'Subscription',
-  subscription_revenue: 'Subscription Revenue',
-  tip: 'Gift Sent',
-  tip_received: 'Gift Received',
-  refund: 'Refund',
-  platform_fee: 'Platform Fee',
-  bonus: 'Bonus',
-  penalty: 'Penalty',
+const NETWORKS = [
+  { label: 'MTN', color: 'bg-yellow-400', text: 'text-yellow-900' },
+  { label: 'Airtel', color: 'bg-red-500', text: 'text-white' },
+  { label: 'Glo', color: 'bg-green-500', text: 'text-white' },
+  { label: '9mobile', color: 'bg-green-700', text: 'text-white' },
+];
+
+const AMOUNTS = [100, 200, 500, 1000];
+
+const TX_ICON = {
+  deposit: <CreditCard className="w-4 h-4" />,
+  tip: <Gift className="w-4 h-4" />,
+  marketplace_purchase: <ShoppingCart className="w-4 h-4" />,
+  course_purchase: <ShoppingCart className="w-4 h-4" />,
+  withdrawal: <ArrowUpRight className="w-4 h-4" />,
 };
 
-const STATUS_COLOR = {
-  completed: 'bg-emerald-500/10 text-emerald-600',
-  pending: 'bg-amber-500/10 text-amber-600',
-  failed: 'bg-destructive/10 text-destructive',
-  reversed: 'bg-muted text-muted-foreground',
+const TX_LABEL = {
+  deposit: 'Recharge', tip: 'Gift Sent', marketplace_purchase: 'Purchase',
+  course_purchase: 'Purchase', withdrawal: 'Withdrawal', tip_received: 'Gift Received',
+};
+
+const STATUS_CONFIG = {
+  completed: { label: 'SUCCESS', cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+  pending:   { label: 'PENDING', cls: 'bg-amber-50 text-amber-600 border-amber-200' },
+  failed:    { label: 'FAILED',  cls: 'bg-red-50 text-red-600 border-red-200' },
 };
 
 export default function Wallet() {
-  const { wallet, balance, transactions, loading, refresh, formatAmount } = useWallet();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
-  };
-
-  const kycLabel = { none: 'Unverified', basic: 'Basic KYC', enhanced: 'Enhanced KYC' };
+  const { wallet, balance, transactions, loading, formatAmount } = useWallet();
+  const [selectedNetwork, setSelectedNetwork] = useState(0);
+  const [selectedAmount, setSelectedAmount] = useState(200);
+  const [phone, setPhone] = useState('0801 234 5678');
+  const [giftRecipient, setGiftRecipient] = useState('');
+  const [giftAmount, setGiftAmount] = useState('');
 
   return (
-    <div className="max-w-2xl mx-auto w-full p-4 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="font-jakarta font-bold text-2xl text-foreground">Wallet</h1>
-        <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={refreshing}>
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-        </Button>
-      </div>
-
+    <div className="p-6 space-y-6 max-w-5xl mx-auto w-full">
       {/* Balance Card */}
-      <div className="rounded-2xl p-6 gradient-brand text-white shadow-lg shadow-primary/25 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="absolute -top-4 -right-4 w-32 h-32 rounded-full bg-white" />
-          <div className="absolute -bottom-8 -left-4 w-40 h-40 rounded-full bg-white" />
-        </div>
-        <div className="relative space-y-3">
-          <div>
-            <p className="text-white/70 text-sm font-medium mb-1">Available Balance</p>
-            {loading ? (
-              <Skeleton className="h-10 w-44 bg-white/20" />
-            ) : (
-              <p className="text-3xl font-jakarta font-bold tracking-tight">
-                {formatAmount(balance.available)}
-              </p>
-            )}
-          </div>
-
-          {balance.locked > 0 && (
-            <p className="text-white/60 text-xs">
-              + {formatAmount(balance.locked)} locked (pending payout)
+      <div className="bg-white border border-border rounded-2xl p-6 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Available Balance</p>
+          {loading ? (
+            <Skeleton className="h-10 w-40 mb-4" />
+          ) : (
+            <p className="font-jakarta font-bold text-4xl text-foreground mb-4">
+              {formatAmount(balance.available)}
             </p>
           )}
-
-          <div className="flex items-center gap-2 pt-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-white/60" />
-            <span className="text-white/60 text-xs">
-              {balance.currency} · {kycLabel[balance.kyc_level || 'none']}
-            </span>
+          <div className="flex gap-3">
+            <Button className="gradient-brand text-white rounded-xl gap-2 px-5">
+              <CreditCard className="w-4 h-4" /> Fund Wallet
+            </Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 px-5">
+              <Gift className="w-4 h-4" /> Send / Gift
+            </Button>
           </div>
+        </div>
+        <div className="hidden md:flex w-24 h-24 rounded-2xl bg-muted items-center justify-center">
+          <CreditCard className="w-10 h-10 text-muted-foreground/30" />
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { icon: Plus,       label: 'Add Money',  color: 'text-emerald-600 bg-emerald-500/10' },
-          { icon: Send,       label: 'Transfer',   color: 'text-primary bg-primary/10' },
-          { icon: ArrowUpRight, label: 'Withdraw', color: 'text-amber-600 bg-amber-500/10' },
-          { icon: TrendingUp, label: 'Earnings',   color: 'text-accent bg-accent/10' },
-        ].map(({ icon: Icon, label, color }) => (
-          <button
-            key={label}
-            className="flex flex-col items-center gap-2 p-3 feed-card active:scale-95 transition-transform"
-          >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-              <Icon className="w-5 h-5" />
+      {/* Quick Actions + Main Panels */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Recharge Airtime */}
+        <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Smartphone className="w-5 h-5 text-primary" />
             </div>
-            <span className="text-xs font-medium text-foreground text-center leading-tight">{label}</span>
-          </button>
-        ))}
-      </div>
+            <div>
+              <h3 className="font-semibold text-sm text-foreground">Recharge Airtime</h3>
+              <p className="text-xs text-muted-foreground">Instant top-up for any network</p>
+            </div>
+          </div>
 
-      {/* Creator Earnings Summary (if any earnings) */}
-      {wallet?.total_earned > 0 && (
-        <div className="feed-card p-4 flex items-center justify-between">
           <div>
-            <p className="text-xs text-muted-foreground font-medium">Total Earned</p>
-            <p className="text-base font-jakarta font-bold text-foreground">{formatAmount(wallet.total_earned)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Select Network</p>
+            <div className="flex gap-2">
+              {NETWORKS.map((n, i) => (
+                <button
+                  key={n.label}
+                  onClick={() => setSelectedNetwork(i)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2 ${n.color} ${n.text} ${selectedNetwork === i ? 'border-primary scale-110 shadow-md' : 'border-transparent'}`}
+                >
+                  {n.label.slice(0, 1)}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground font-medium">Total Withdrawn</p>
-            <p className="text-base font-jakarta font-bold text-foreground">{formatAmount(wallet.total_withdrawn || 0)}</p>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Phone Number</p>
+            <div className="relative">
+              <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input value={phone} onChange={e => setPhone(e.target.value)} className="pl-9 rounded-xl" placeholder="080X XXX XXXX" />
+            </div>
           </div>
-          <TrendingUp className="w-5 h-5 text-accent" />
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Amount Selection</p>
+            <div className="flex gap-2">
+              {AMOUNTS.map(amt => (
+                <button
+                  key={amt}
+                  onClick={() => setSelectedAmount(amt)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-all ${selectedAmount === amt ? 'bg-primary text-white border-primary' : 'bg-white text-foreground border-border hover:border-primary/50'}`}
+                >
+                  ₦{amt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Button className="w-full gradient-brand text-white rounded-xl font-semibold py-5">
+            Recharge Now
+          </Button>
         </div>
-      )}
+
+        {/* Gift Credits */}
+        <div className="bg-white border border-border rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <Gift className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm text-foreground">Gift Credits</h3>
+              <p className="text-xs text-muted-foreground">Send wallet balance to a student</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recipient Search</p>
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <Input value={giftRecipient} onChange={e => setGiftRecipient(e.target.value)} className="pl-9 rounded-xl" placeholder="Search by name or @username" />
+            </div>
+          </div>
+
+          {/* Suggested recipient */}
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">A</div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Aiden Pearce</p>
+              <p className="text-xs text-muted-foreground">@aiden_studyhub</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Gift Amount</p>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">₦</span>
+              <Input value={giftAmount} onChange={e => setGiftAmount(e.target.value)} className="pl-7 rounded-xl" placeholder="Enter amount" />
+            </div>
+          </div>
+
+          <div>
+            <Input className="rounded-xl" placeholder="Add a Note (Optional) — Happy studying! Here's a..." />
+          </div>
+
+          <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold py-5">
+            Send Gift
+          </Button>
+        </div>
+      </div>
 
       {/* Transaction History */}
-      <div>
-        <h2 className="font-jakarta font-semibold text-base text-foreground mb-3">Recent Transactions</h2>
+      <div className="bg-white border border-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-border">
+          <h2 className="font-jakarta font-semibold text-base text-foreground">Transaction History</h2>
+        </div>
         {loading ? (
-          <div className="space-y-2">
-            {Array(5).fill(0).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 feed-card">
-                <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
-                <div className="flex-1 space-y-1.5">
+          <div className="p-4 space-y-3">
+            {Array(4).fill(0).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-xl" />
+                <div className="flex-1 space-y-1">
                   <Skeleton className="h-3.5 w-32" />
-                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-48" />
                 </div>
-                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
               </div>
             ))}
           </div>
         ) : transactions.length === 0 ? (
-          <div className="text-center py-12 feed-card">
-            <WalletIcon className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">No transactions yet</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Add money to get started</p>
+          <div className="py-16 text-center">
+            <p className="text-muted-foreground text-sm">No transactions yet</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {transactions.map(tx => (
-              <TransactionRow key={tx.id} tx={tx} formatAmount={formatAmount} />
-            ))}
-          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide px-6 py-3">Type</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide px-6 py-3">Transaction ID</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide px-6 py-3">Date</th>
+                <th className="text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide px-6 py-3">Amount</th>
+                <th className="text-right text-xs font-semibold text-muted-foreground uppercase tracking-wide px-6 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map(tx => {
+                const isCredit = tx.direction === 'credit';
+                const statusCfg = STATUS_CONFIG[tx.status] || STATUS_CONFIG.pending;
+                return (
+                  <tr key={tx.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+                          {TX_ICON[tx.type] || <CreditCard className="w-4 h-4" />}
+                        </div>
+                        <span className="text-sm font-medium text-foreground">{TX_LABEL[tx.type] || tx.type}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-xs text-muted-foreground font-mono">#{tx.id?.slice(0, 12) || 'TXN-000000'}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-muted-foreground">{format(new Date(tx.created_date), 'MMM d, yyyy')}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`text-sm font-bold ${isCredit ? 'text-emerald-600' : 'text-foreground'}`}>
+                        {isCredit ? '' : ''}{formatAmount(tx.amount, tx.currency)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${statusCfg.cls}`}>
+                        {statusCfg.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-      </div>
-    </div>
-  );
-}
-
-function TransactionRow({ tx, formatAmount }) {
-  const isCredit = tx.direction === 'credit';
-  const label = TX_TYPE_LABEL[tx.type] || tx.type?.replace(/_/g, ' ');
-
-  return (
-    <div className="flex items-center gap-3 p-3 feed-card">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isCredit ? 'bg-emerald-500/10' : 'bg-destructive/10'}`}>
-        {isCredit
-          ? <ArrowDownLeft className="w-5 h-5 text-emerald-600" />
-          : <ArrowUpRight className="w-5 h-5 text-destructive" />
-        }
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {tx.description || label}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {formatDistanceToNow(new Date(tx.created_date), { addSuffix: true })}
-        </p>
-      </div>
-      <div className="text-right flex-shrink-0">
-        <p className={`text-sm font-bold ${isCredit ? 'text-emerald-600' : 'text-destructive'}`}>
-          {isCredit ? '+' : '-'}{formatAmount(tx.amount, tx.currency)}
-        </p>
-        <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 mt-0.5 ${STATUS_COLOR[tx.status] || ''}`}>
-          {tx.status}
-        </Badge>
       </div>
     </div>
   );

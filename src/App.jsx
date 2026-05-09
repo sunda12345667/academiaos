@@ -20,6 +20,7 @@ const Notifications = lazy(() => import('@/pages/Notifications'));
 const Profile       = lazy(() => import('@/pages/Profile'));
 const Create        = lazy(() => import('@/pages/Create'));
 
+
 // App-level splash loader (used before router is ready)
 function AppLoader() {
   return (
