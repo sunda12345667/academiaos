@@ -1,0 +1,88 @@
+{
+  "name": "School",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "university",
+        "polytechnic",
+        "college",
+        "secondary",
+        "primary",
+        "vocational",
+        "other"
+      ]
+    },
+    "country": {
+      "type": "string",
+      "default": "Nigeria"
+    },
+    "state": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "cover_url": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "email_domain": {
+      "type": "string",
+      "description": "Official email domain for auto-verification e.g. unilag.edu.ng"
+    },
+    "admin_id": {
+      "type": "string",
+      "description": "School admin UserProfile ID"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "pending",
+        "verified"
+      ],
+      "default": "unverified"
+    },
+    "student_count": {
+      "type": "number",
+      "default": 0
+    },
+    "is_premium": {
+      "type": "boolean",
+      "default": false,
+      "description": "Premium school features unlocked"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended"
+      ],
+      "default": "active"
+    },
+    "social_links": {
+      "type": "object"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "country"
+  ]
+}

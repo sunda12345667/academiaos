@@ -1,0 +1,67 @@
+{
+  "name": "Wallet",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "balance": {
+      "type": "number",
+      "default": 0,
+      "description": "Available balance in platform currency (kobo/cents)"
+    },
+    "locked_balance": {
+      "type": "number",
+      "default": 0,
+      "description": "Funds locked pending transaction completion"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN",
+      "description": "ISO 4217 currency code"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "frozen",
+        "closed"
+      ],
+      "default": "active"
+    },
+    "kyc_level": {
+      "type": "string",
+      "enum": [
+        "none",
+        "basic",
+        "enhanced"
+      ],
+      "default": "none",
+      "description": "KYC tier for transaction limits"
+    },
+    "total_earned": {
+      "type": "number",
+      "default": 0
+    },
+    "total_withdrawn": {
+      "type": "number",
+      "default": 0
+    },
+    "bank_account": {
+      "type": "object",
+      "description": "Linked bank for withdrawals: {bank_code, account_number, account_name}"
+    },
+    "withdrawal_limit_daily": {
+      "type": "number",
+      "default": 50000
+    },
+    "last_transaction_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_id",
+    "currency"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "conversation_id": {
+      "type": "string"
+    },
+    "sender_id": {
+      "type": "string"
+    },
+    "sender_username": {
+      "type": "string"
+    },
+    "sender_avatar_url": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "image",
+        "video",
+        "file",
+        "audio",
+        "post_share",
+        "system"
+      ],
+      "default": "text"
+    },
+    "content": {
+      "type": "string"
+    },
+    "media_url": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "file_size": {
+      "type": "number"
+    },
+    "shared_post_id": {
+      "type": "string",
+      "description": "For post_share type"
+    },
+    "reply_to_message_id": {
+      "type": "string"
+    },
+    "read_by": {
+      "type": "array",
+      "description": "List of user IDs who have read this message",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "delivered",
+        "read",
+        "deleted"
+      ],
+      "default": "sent"
+    },
+    "reactions": {
+      "type": "object",
+      "description": "Map of emoji to array of user_ids"
+    },
+    "is_edited": {
+      "type": "boolean",
+      "default": false
+    },
+    "edited_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "conversation_id",
+    "sender_id",
+    "type"
+  ]
+}

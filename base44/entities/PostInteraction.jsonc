@@ -1,0 +1,38 @@
+{
+  "name": "PostInteraction",
+  "type": "object",
+  "properties": {
+    "post_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "like",
+        "love",
+        "insightful",
+        "save",
+        "share",
+        "view",
+        "poll_vote"
+      ],
+      "description": "Interaction type"
+    },
+    "poll_choice": {
+      "type": "string",
+      "description": "For poll_vote type"
+    },
+    "share_destination": {
+      "type": "string",
+      "description": "For share type: feed, group, dm, external"
+    }
+  },
+  "required": [
+    "post_id",
+    "user_id",
+    "type"
+  ]
+}

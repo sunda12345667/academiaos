@@ -1,0 +1,123 @@
+{
+  "name": "MarketplaceListing",
+  "type": "object",
+  "properties": {
+    "seller_id": {
+      "type": "string",
+      "description": "UserProfile ID"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "textbooks",
+        "study_materials",
+        "courses",
+        "tutoring",
+        "electronics",
+        "accommodation",
+        "food",
+        "clothing",
+        "services",
+        "other"
+      ]
+    },
+    "price": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "pricing_type": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "negotiable",
+        "free"
+      ],
+      "default": "fixed"
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "new",
+        "like_new",
+        "good",
+        "fair",
+        "poor",
+        "digital"
+      ],
+      "description": "For physical items"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "location": {
+      "type": "string"
+    },
+    "school_id": {
+      "type": "string",
+      "description": "If school-specific listing"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "sold",
+        "reserved",
+        "archived",
+        "removed"
+      ],
+      "default": "active"
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0
+    },
+    "save_count": {
+      "type": "number",
+      "default": 0
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "is_digital": {
+      "type": "boolean",
+      "default": false
+    },
+    "digital_file_url": {
+      "type": "string"
+    },
+    "quantity_available": {
+      "type": "number",
+      "default": 1
+    },
+    "moderation_status": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "flagged",
+        "removed"
+      ],
+      "default": "clean"
+    }
+  },
+  "required": [
+    "seller_id",
+    "title",
+    "category",
+    "price"
+  ]
+}

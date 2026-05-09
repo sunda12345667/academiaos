@@ -1,0 +1,113 @@
+{
+  "name": "Transaction",
+  "type": "object",
+  "properties": {
+    "wallet_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "deposit",
+        "withdrawal",
+        "course_purchase",
+        "course_sale",
+        "marketplace_purchase",
+        "marketplace_sale",
+        "subscription_payment",
+        "subscription_revenue",
+        "tip",
+        "tip_received",
+        "refund",
+        "platform_fee",
+        "bonus",
+        "penalty"
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount in smallest currency unit (kobo)"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "credit",
+        "debit"
+      ]
+    },
+    "balance_before": {
+      "type": "number"
+    },
+    "balance_after": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "completed",
+        "failed",
+        "reversed"
+      ],
+      "default": "pending"
+    },
+    "reference": {
+      "type": "string",
+      "description": "Unique transaction reference"
+    },
+    "external_reference": {
+      "type": "string",
+      "description": "Payment gateway reference"
+    },
+    "payment_gateway": {
+      "type": "string",
+      "enum": [
+        "paystack",
+        "flutterwave",
+        "stripe",
+        "internal"
+      ],
+      "description": "Gateway used for this transaction"
+    },
+    "related_entity_type": {
+      "type": "string",
+      "description": "What this transaction relates to: post, course, listing"
+    },
+    "related_entity_id": {
+      "type": "string"
+    },
+    "counterparty_id": {
+      "type": "string",
+      "description": "The other party in the transaction"
+    },
+    "description": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Raw gateway response, audit data"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "failed_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "wallet_id",
+    "user_id",
+    "type",
+    "amount",
+    "currency",
+    "direction",
+    "reference"
+  ]
+}

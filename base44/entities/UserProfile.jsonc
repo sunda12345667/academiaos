@@ -1,0 +1,120 @@
+{
+  "name": "UserProfile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Reference to the base44 auth User ID"
+    },
+    "username": {
+      "type": "string",
+      "description": "Unique handle e.g. @john_doe"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "bio": {
+      "type": "string"
+    },
+    "avatar_url": {
+      "type": "string"
+    },
+    "cover_url": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "student",
+        "educator",
+        "creator",
+        "admin",
+        "moderator",
+        "school_admin"
+      ],
+      "default": "student"
+    },
+    "account_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "banned",
+        "pending_verification"
+      ],
+      "default": "active"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "email_verified",
+        "id_verified",
+        "educator_verified"
+      ],
+      "default": "unverified"
+    },
+    "academic_id": {
+      "type": "string",
+      "description": "Reference to AcademicIdentity entity"
+    },
+    "school_id": {
+      "type": "string",
+      "description": "Reference to School/Institution entity"
+    },
+    "follower_count": {
+      "type": "number",
+      "default": 0
+    },
+    "following_count": {
+      "type": "number",
+      "default": 0
+    },
+    "post_count": {
+      "type": "number",
+      "default": 0
+    },
+    "wallet_id": {
+      "type": "string",
+      "description": "Reference to Wallet entity"
+    },
+    "social_links": {
+      "type": "object",
+      "description": "External social links: {twitter, linkedin, github, website}"
+    },
+    "preferences": {
+      "type": "object",
+      "description": "User preferences: {notifications, privacy, theme, language}"
+    },
+    "is_creator": {
+      "type": "boolean",
+      "default": false
+    },
+    "creator_tier": {
+      "type": "string",
+      "enum": [
+        "none",
+        "basic",
+        "pro",
+        "enterprise"
+      ],
+      "default": "none"
+    },
+    "last_active": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "country": {
+      "type": "string"
+    },
+    "timezone": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "username",
+    "display_name",
+    "role"
+  ]
+}

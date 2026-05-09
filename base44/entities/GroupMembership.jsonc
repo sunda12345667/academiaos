@@ -1,0 +1,54 @@
+{
+  "name": "GroupMembership",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "admin",
+        "moderator",
+        "member",
+        "guest"
+      ],
+      "default": "member"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pending",
+        "banned",
+        "left"
+      ],
+      "default": "active"
+    },
+    "joined_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "invited_by": {
+      "type": "string",
+      "description": "UserProfile ID who sent invitation"
+    },
+    "notifications_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_muted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "group_id",
+    "user_id",
+    "role"
+  ]
+}

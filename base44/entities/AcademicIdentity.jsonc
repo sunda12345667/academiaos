@@ -1,0 +1,101 @@
+{
+  "name": "AcademicIdentity",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Reference to User"
+    },
+    "institution_name": {
+      "type": "string"
+    },
+    "institution_type": {
+      "type": "string",
+      "enum": [
+        "university",
+        "polytechnic",
+        "college",
+        "secondary",
+        "primary",
+        "vocational",
+        "online",
+        "other"
+      ]
+    },
+    "school_id": {
+      "type": "string",
+      "description": "FK to School entity if school is registered on platform"
+    },
+    "student_id_number": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "faculty": {
+      "type": "string"
+    },
+    "program": {
+      "type": "string",
+      "description": "Degree/certification program"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "postgrad",
+        "phd",
+        "other"
+      ]
+    },
+    "graduation_year": {
+      "type": "number"
+    },
+    "enrollment_year": {
+      "type": "number"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "pending",
+        "verified",
+        "rejected"
+      ],
+      "default": "unverified"
+    },
+    "verification_document_url": {
+      "type": "string"
+    },
+    "courses": {
+      "type": "array",
+      "description": "List of course IDs the user is enrolled in",
+      "items": {
+        "type": "string"
+      }
+    },
+    "subjects": {
+      "type": "array",
+      "description": "Academic subject areas of interest",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cgpa": {
+      "type": "number"
+    },
+    "honors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}

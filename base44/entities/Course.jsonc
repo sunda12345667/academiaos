@@ -1,0 +1,119 @@
+{
+  "name": "Course",
+  "type": "object",
+  "properties": {
+    "instructor_id": {
+      "type": "string",
+      "description": "UserProfile ID"
+    },
+    "title": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "thumbnail_url": {
+      "type": "string"
+    },
+    "preview_video_url": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "subject_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "all_levels"
+      ]
+    },
+    "language": {
+      "type": "string",
+      "default": "English"
+    },
+    "pricing_type": {
+      "type": "string",
+      "enum": [
+        "free",
+        "paid",
+        "subscription"
+      ],
+      "default": "free"
+    },
+    "price": {
+      "type": "number",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "enrollment_count": {
+      "type": "number",
+      "default": 0
+    },
+    "rating_average": {
+      "type": "number",
+      "default": 0
+    },
+    "rating_count": {
+      "type": "number",
+      "default": 0
+    },
+    "duration_minutes": {
+      "type": "number"
+    },
+    "lessons_count": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "is_certified": {
+      "type": "boolean",
+      "default": false
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Linked classroom group"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "instructor_id",
+    "title"
+  ]
+}

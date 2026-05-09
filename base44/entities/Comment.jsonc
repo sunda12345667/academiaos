@@ -1,0 +1,61 @@
+{
+  "name": "Comment",
+  "type": "object",
+  "properties": {
+    "post_id": {
+      "type": "string"
+    },
+    "author_id": {
+      "type": "string"
+    },
+    "author_username": {
+      "type": "string"
+    },
+    "author_avatar_url": {
+      "type": "string"
+    },
+    "parent_comment_id": {
+      "type": "string",
+      "description": "For threaded/nested replies"
+    },
+    "content": {
+      "type": "string"
+    },
+    "media_url": {
+      "type": "string"
+    },
+    "like_count": {
+      "type": "number",
+      "default": 0
+    },
+    "reply_count": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "deleted",
+        "removed_by_moderator"
+      ],
+      "default": "active"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "mentions": {
+      "type": "array",
+      "description": "List of mentioned user IDs",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "post_id",
+    "author_id",
+    "content"
+  ]
+}

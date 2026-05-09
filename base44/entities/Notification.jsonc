@@ -1,0 +1,79 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "recipient_id": {
+      "type": "string",
+      "description": "UserProfile ID"
+    },
+    "actor_id": {
+      "type": "string",
+      "description": "UserProfile ID who triggered the notification"
+    },
+    "actor_username": {
+      "type": "string"
+    },
+    "actor_avatar_url": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "new_follower",
+        "post_like",
+        "post_comment",
+        "comment_reply",
+        "comment_like",
+        "post_share",
+        "mention",
+        "group_invite",
+        "group_join_request",
+        "group_join_approved",
+        "new_message",
+        "course_update",
+        "assignment_due",
+        "live_starting",
+        "marketplace_order",
+        "wallet_credit",
+        "wallet_debit",
+        "system_alert",
+        "moderation_action"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "What entity this notification relates to: post, comment, group, user, etc."
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the related entity"
+    },
+    "deep_link": {
+      "type": "string",
+      "description": "Frontend route for this notification"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_pushed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether push notification was sent"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Extra context data"
+    }
+  },
+  "required": [
+    "recipient_id",
+    "type"
+  ]
+}

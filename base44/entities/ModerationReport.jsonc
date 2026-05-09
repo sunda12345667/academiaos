@@ -1,0 +1,85 @@
+{
+  "name": "ModerationReport",
+  "type": "object",
+  "properties": {
+    "reporter_id": {
+      "type": "string"
+    },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "post",
+        "comment",
+        "user",
+        "group",
+        "message",
+        "listing"
+      ]
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "spam",
+        "harassment",
+        "hate_speech",
+        "violence",
+        "nudity",
+        "misinformation",
+        "copyright",
+        "fraud",
+        "impersonation",
+        "other"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "evidence_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "under_review",
+        "resolved_action_taken",
+        "resolved_no_action",
+        "dismissed"
+      ],
+      "default": "pending"
+    },
+    "reviewer_id": {
+      "type": "string",
+      "description": "Moderator who handled the report"
+    },
+    "reviewer_notes": {
+      "type": "string"
+    },
+    "action_taken": {
+      "type": "string",
+      "enum": [
+        "none",
+        "warning",
+        "content_removed",
+        "account_suspended",
+        "account_banned"
+      ]
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "reporter_id",
+    "entity_type",
+    "entity_id",
+    "reason"
+  ]
+}

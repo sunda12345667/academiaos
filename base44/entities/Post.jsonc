@@ -1,0 +1,180 @@
+{
+  "name": "Post",
+  "type": "object",
+  "properties": {
+    "author_id": {
+      "type": "string",
+      "description": "UserProfile ID"
+    },
+    "author_username": {
+      "type": "string"
+    },
+    "author_display_name": {
+      "type": "string"
+    },
+    "author_avatar_url": {
+      "type": "string"
+    },
+    "author_role": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "image",
+        "video",
+        "short_video",
+        "article",
+        "question",
+        "poll",
+        "resource",
+        "announcement"
+      ],
+      "description": "Content type determines rendering strategy"
+    },
+    "content": {
+      "type": "string",
+      "description": "Text body or caption"
+    },
+    "media_urls": {
+      "type": "array",
+      "description": "Ordered list of media file URLs",
+      "items": {
+        "type": "string"
+      }
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "Video/article thumbnail"
+    },
+    "video_duration": {
+      "type": "number",
+      "description": "Duration in seconds for video posts"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "subject_tags": {
+      "type": "array",
+      "description": "Academic subject tags for feed personalization",
+      "items": {
+        "type": "string"
+      }
+    },
+    "group_id": {
+      "type": "string",
+      "description": "If posted inside a group/community"
+    },
+    "course_id": {
+      "type": "string",
+      "description": "If posted inside a course"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "followers",
+        "group",
+        "course",
+        "private"
+      ],
+      "default": "public"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "archived",
+        "removed",
+        "under_review"
+      ],
+      "default": "published"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "allow_comments": {
+      "type": "boolean",
+      "default": true
+    },
+    "allow_shares": {
+      "type": "boolean",
+      "default": true
+    },
+    "like_count": {
+      "type": "number",
+      "default": 0
+    },
+    "comment_count": {
+      "type": "number",
+      "default": 0
+    },
+    "share_count": {
+      "type": "number",
+      "default": 0
+    },
+    "view_count": {
+      "type": "number",
+      "default": 0
+    },
+    "save_count": {
+      "type": "number",
+      "default": 0
+    },
+    "engagement_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Computed ranking signal for feed algorithm"
+    },
+    "poll_options": {
+      "type": "array",
+      "description": "For poll type posts",
+      "items": {
+        "type": "object"
+      }
+    },
+    "linked_resource_url": {
+      "type": "string"
+    },
+    "is_paid_content": {
+      "type": "boolean",
+      "default": false
+    },
+    "price": {
+      "type": "number"
+    },
+    "moderation_status": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "flagged",
+        "reviewed",
+        "removed"
+      ],
+      "default": "clean"
+    },
+    "moderation_notes": {
+      "type": "string"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "author_id",
+    "type"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "name": "Conversation",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "direct",
+        "group"
+      ],
+      "default": "direct"
+    },
+    "participants": {
+      "type": "array",
+      "description": "List of UserProfile IDs",
+      "items": {
+        "type": "string"
+      }
+    },
+    "name": {
+      "type": "string",
+      "description": "For group conversations"
+    },
+    "avatar_url": {
+      "type": "string"
+    },
+    "last_message_preview": {
+      "type": "string"
+    },
+    "last_message_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_message_sender_id": {
+      "type": "string"
+    },
+    "unread_counts": {
+      "type": "object",
+      "description": "Map of user_id to unread count"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived",
+        "muted"
+      ],
+      "default": "active"
+    },
+    "is_encrypted": {
+      "type": "boolean",
+      "default": false
+    },
+    "group_id": {
+      "type": "string",
+      "description": "Linked group if this is a group channel"
+    }
+  },
+  "required": [
+    "type",
+    "participants"
+  ]
+}

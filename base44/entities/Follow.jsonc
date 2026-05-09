@@ -1,0 +1,36 @@
+{
+  "name": "Follow",
+  "type": "object",
+  "properties": {
+    "follower_id": {
+      "type": "string",
+      "description": "UserProfile ID of the person following"
+    },
+    "following_id": {
+      "type": "string",
+      "description": "UserProfile ID of the person being followed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pending",
+        "blocked"
+      ],
+      "default": "active"
+    },
+    "notification_preference": {
+      "type": "string",
+      "enum": [
+        "all",
+        "highlights",
+        "none"
+      ],
+      "default": "all"
+    }
+  },
+  "required": [
+    "follower_id",
+    "following_id"
+  ]
+}
