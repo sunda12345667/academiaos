@@ -78,18 +78,21 @@ export function NotificationProvider({ profileId, children }) {
   }, []);
 
   const markAllRead = useCallback(async () => {
-    const prevNotifications = notifications;
-    const prevCount = unreadCount;
-    // Optimistic
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    setUnreadCount(0);
+    // Capture snapshot inside setter to avoid stale closure on `notifications`
+    let prevNotifications;
+    let prevCount;
+    setNotifications(prev => {
+      prevNotifications = prev;
+      return prev.map(n => ({ ...n, is_read: true }));
+    });
+    setUnreadCount(prev => { prevCount = prev; return 0; });
     try {
       await notificationService.markAllAsRead(profileId);
     } catch {
       setNotifications(prevNotifications);
       setUnreadCount(prevCount);
     }
-  }, [profileId, notifications, unreadCount]);
+  }, [profileId]);
 
   const refresh = useCallback(async () => {
     if (!profileId) return;
@@ -98,7 +101,8 @@ export function NotificationProvider({ profileId, children }) {
     setUnreadCount(notifs.filter(n => !n.is_read).length);
   }, [profileId]);
 
-  // Stable value object — only changes when data changes, not on every render
+  // Stable value object — useMemo so consumers only rerender when data changes
+  // markRead/markAllRead/refresh are useCallback so they never cause cascade rerenders
   const value = useMemo(() => ({
     notifications,
     unreadCount,
@@ -107,7 +111,8 @@ export function NotificationProvider({ profileId, children }) {
     markRead,
     markAllRead,
     refresh,
-  }), [notifications, unreadCount, loading, initialized, markRead, markAllRead, refresh]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [notifications, unreadCount, loading, initialized]);
 
   return (
     <NotificationContext.Provider value={value}>

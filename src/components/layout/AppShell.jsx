@@ -8,7 +8,7 @@
  *   NotificationProvider — ONE Notification subscription + state
  *   ErrorBoundary        — Route-level crash isolation
  */
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
 import DesktopSidebar from './DesktopSidebar';
 import MobileBottomNav from './MobileBottomNav';
@@ -29,6 +29,7 @@ function PageLoader() {
 
 export default function AppShell() {
   const { profile } = useCurrentUser();
+  const location = useLocation();
 
   return (
     <FeedRealtimeProvider>
@@ -49,7 +50,8 @@ export default function AppShell() {
             {/* Scrollable page content with route-level error boundary */}
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               <div className="min-h-full">
-                <ErrorBoundary>
+                {/* resetKey={pathname} — boundary auto-resets on every route change */}
+                <ErrorBoundary resetKey={location.pathname}>
                   <Suspense fallback={<PageLoader />}>
                     <Outlet />
                   </Suspense>

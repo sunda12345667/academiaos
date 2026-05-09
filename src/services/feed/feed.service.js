@@ -51,21 +51,37 @@ async function getPersonalizedFeed(userId, { page = 1, limit = 20, feedType = 'h
   const skip = (page - 1) * limit;
 
   if (feedType === 'following') {
-    // Only show posts from people user follows
-    // Future: This becomes a graph traversal query in PostgreSQL
+    // Fetch follows first, then pull posts in parallel per author (bounded)
+    // Future: Single JOIN query in PostgreSQL with a materialized feed table
     const follows = await base44.entities.Follow.filter({ follower_id: userId, status: 'active' });
     const followingIds = follows.map(f => f.following_id);
 
     if (!followingIds.length) return { posts: [], hasMore: false, page };
 
-    const posts = await base44.entities.Post.filter(
-      { status: 'published', visibility: 'public', moderation_status: 'clean' },
-      '-engagement_score',
-      limit + 1
+    // Fan-out: fetch recent posts from each followed user, cap at 5 authors to limit concurrency
+    // Future: Replace with a server-side fan-in aggregation query
+    const authorSlice = followingIds.slice(0, 5);
+    const perAuthorLimit = Math.ceil(limit / authorSlice.length) + 2;
+
+    const authorPostArrays = await Promise.all(
+      authorSlice.map(authorId =>
+        base44.entities.Post.filter(
+          { author_id: authorId, status: 'published', visibility: 'public', moderation_status: 'clean' },
+          '-created_date',
+          perAuthorLimit
+        ).catch(() => [])
+      )
     );
 
-    const filtered = posts.filter(p => followingIds.includes(p.author_id)).slice(0, limit);
-    return { posts: filtered, hasMore: filtered.length === limit, page };
+    // Merge and sort by engagement score, deduplicate by ID
+    const seen = new Set();
+    const merged = authorPostArrays
+      .flat()
+      .filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; })
+      .sort((a, b) => (b.engagement_score ?? 0) - (a.engagement_score ?? 0))
+      .slice(skip, skip + limit);
+
+    return { posts: merged, hasMore: merged.length === limit, page };
   }
 
   if (feedType === 'discover') {

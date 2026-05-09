@@ -1,11 +1,14 @@
 /**
- * useFeed Hook — Infinite-scroll feed with centralized realtime sync
+ * useFeed — Infinite-scroll feed with centralized realtime sync
  *
- * Architecture changes:
- * - Realtime sync now goes through FeedRealtimeProvider (ONE subscription total)
- * - Each feed instance registers a listener key — no duplicate subscriptions
- * - Stable fetchPosts ref prevents stale-closure loops
- * - Optimistic updates isolated per feed instance
+ * Architecture:
+ * - Realtime sync via FeedRealtimeProvider (ONE Post subscription for all feeds)
+ * - Each useFeed instance registers a unique listener — no duplicate subscriptions
+ * - Reset/refetch triggered by config changes via a single stable effect
+ * - fetchPosts ref pattern prevents stale-closure double-fetches
+ * - Optimistic update methods isolated per feed instance
+ *
+ * Feed types: 'home' | 'discover' | 'following' | 'video' | 'group' | 'profile'
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import feedService from '@/services/feed/feed.service';
@@ -21,46 +24,50 @@ export function useFeed(feedType = 'home', { userId, groupId } = {}) {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Stable ref to avoid stale closure in realtime callbacks
-  const feedTypeRef = useRef(feedType);
-  const groupIdRef = useRef(groupId);
-  useEffect(() => { feedTypeRef.current = feedType; }, [feedType]);
-  useEffect(() => { groupIdRef.current = groupId; }, [groupId]);
+  // Stable refs — realtime callbacks read these without stale closure risk
+  const configRef = useRef({ feedType, userId, groupId });
+  useEffect(() => { configRef.current = { feedType, userId, groupId }; });
 
-  // Unique key for this feed instance in the realtime bus
+  // Unique key for this feed instance in the realtime listener map
   const feedKey = useRef(`feed-${++feedInstanceCounter}`).current;
   const { registerFeedListener, unregisterFeedListener } = useFeedRealtime();
 
+  // ─── Data Fetching ─────────────────────────────────────────────────────────
+  // Uses configRef so it never needs feedType/userId/groupId in its dep array,
+  // which prevents the double-fetch that occurred when both the reset effect
+  // and the callback dep both triggered together.
+
   const fetchPosts = useCallback(async (pageNum = 1, reset = false) => {
+    const { feedType: ft, userId: uid, groupId: gid } = configRef.current;
     setLoading(true);
     setError(null);
     try {
       let result;
-      const ft = feedTypeRef.current;
-      const gid = groupIdRef.current;
-
       if (ft === 'video') {
         result = await feedService.getVideoFeed({ page: pageNum });
       } else if (ft === 'group' && gid) {
         result = await feedService.getGroupFeed(gid, { page: pageNum });
-      } else if (ft === 'profile' && userId) {
-        result = await feedService.getUserFeed(userId, { page: pageNum });
+      } else if (ft === 'profile' && uid) {
+        result = await feedService.getUserFeed(uid, { page: pageNum });
       } else {
-        result = await feedService.getPersonalizedFeed(userId, { page: pageNum, feedType: ft });
+        result = await feedService.getPersonalizedFeed(uid, { page: pageNum, feedType: ft });
       }
 
       setPosts(prev => reset ? result.posts : [...prev, ...result.posts]);
       setHasMore(result.hasMore);
       setPage(pageNum);
     } catch (err) {
-      setError(err.message);
+      setError(err?.message ?? 'Failed to load feed');
     } finally {
       setLoading(false);
       setInitialLoading(false);
     }
-  }, [userId]); // userId is the only external dep that affects the query
+  }, []); // intentionally empty — reads config via ref
 
-  // Reset and refetch on feed type / context change
+  // ─── Reset on Config Change ────────────────────────────────────────────────
+  // Separate from fetchPosts so the dep array is purely the config values.
+  // This is the ONLY place fetchPosts(1, true) is called on config change.
+
   useEffect(() => {
     setPosts([]);
     setPage(1);
@@ -69,18 +76,28 @@ export function useFeed(feedType = 'home', { userId, groupId } = {}) {
     fetchPosts(1, true);
   }, [feedType, userId, groupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Register realtime listener — uses shared bus, no raw subscribe calls here
+  // ─── Realtime Sync ─────────────────────────────────────────────────────────
+  // ONE listener registered per feed instance — FeedRealtimeProvider owns the
+  // actual base44 subscription. This callback runs per incoming event.
+
   useEffect(() => {
     registerFeedListener(feedKey, (event) => {
+      const { feedType: ft, groupId: gid } = configRef.current;
+
       if (event.type === 'create') {
-        // Only prepend to home/discover feeds, not profile/group feeds
-        if (feedTypeRef.current === 'home' || feedTypeRef.current === 'discover') {
-          setPosts(prev => {
-            if (prev.some(p => p.id === event.post.id)) return prev;
-            return [event.post, ...prev];
-          });
+        // Group feeds: only accept posts from this group
+        if (ft === 'group') {
+          if (event.post?.group_id !== gid) return;
         }
+        // Profile feeds: skip — user's own posts appear on publish, realtime not needed
+        if (ft === 'profile') return;
+
+        setPosts(prev => {
+          if (prev.some(p => p.id === event.post.id)) return prev;
+          return [event.post, ...prev];
+        });
       } else if (event.type === 'update') {
+        // Always apply updates — like/comment counts, etc.
         setPosts(prev => prev.map(p => p.id === event.id ? { ...p, ...event.data } : p));
       } else if (event.type === 'delete') {
         setPosts(prev => prev.filter(p => p.id !== event.id));
@@ -90,9 +107,15 @@ export function useFeed(feedType = 'home', { userId, groupId } = {}) {
     return () => unregisterFeedListener(feedKey);
   }, [feedKey, registerFeedListener, unregisterFeedListener]);
 
+  // ─── Pagination ────────────────────────────────────────────────────────────
+
   const loadMore = useCallback(() => {
     if (!loading && hasMore) fetchPosts(page + 1);
   }, [loading, hasMore, page, fetchPosts]);
+
+  // ─── Optimistic Updates ────────────────────────────────────────────────────
+  // For immediate UI response before server confirms. Realtime bus will
+  // reconcile the authoritative version when the update event arrives.
 
   const addPostOptimistic = useCallback((newPost) => {
     setPosts(prev => {
@@ -116,7 +139,7 @@ export function useFeed(feedType = 'home', { userId, groupId } = {}) {
     error,
     hasMore,
     loadMore,
-    refresh: () => fetchPosts(1, true),
+    refresh: useCallback(() => fetchPosts(1, true), [fetchPosts]),
     addPostOptimistic,
     updatePostOptimistic,
     removePostOptimistic,

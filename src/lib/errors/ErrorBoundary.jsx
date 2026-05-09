@@ -1,10 +1,18 @@
 /**
  * ErrorBoundary — Route-level and component-level error isolation
  *
- * Usage:
- *   <ErrorBoundary>                    // default full-page fallback
- *   <ErrorBoundary inline>             // compact inline fallback for widgets
- *   <ErrorBoundary fallback={<Custom/>}> // custom fallback
+ * Modes:
+ *   <ErrorBoundary>                      — full-page fallback (routes, page sections)
+ *   <ErrorBoundary inline>               — compact inline fallback (widgets, cards)
+ *   <ErrorBoundary fallback={<Custom/>}> — custom fallback component
+ *
+ * Key-based reset (route transitions):
+ *   In AppShell, wrap <Outlet> in <ErrorBoundary key={location.pathname}>
+ *   This automatically resets the boundary on every route change.
+ *
+ * Production error logging:
+ *   Pass onError prop to hook into Sentry / Datadog:
+ *   <ErrorBoundary onError={(err, info) => Sentry.captureException(err)}>
  */
 import { Component } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
@@ -13,6 +21,7 @@ export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null };
+    this.handleReset = this.handleReset.bind(this);
   }
 
   static getDerivedStateFromError(error) {
@@ -20,13 +29,26 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Centralized error logging hook — swap with Sentry/Datadog in production
-    console.error('[ErrorBoundary] Caught error:', error, info.componentStack);
+    // Forward to external error reporter if provided (Sentry, Datadog, etc.)
+    if (typeof this.props.onError === 'function') {
+      this.props.onError(error, info);
+    }
+    // Always log locally — replace with structured logger in production
+    console.error('[ErrorBoundary]', error?.message, info?.componentStack?.split('\n')[1]?.trim());
   }
 
-  handleReset = () => {
+  // Called when key prop changes (e.g. route change resets boundary automatically)
+  static getDerivedStateFromProps(props, state) {
+    // If a resetKey is provided and changed, reset the error state
+    if (state.hasError && props.resetKey !== undefined && props.resetKey !== state.lastResetKey) {
+      return { hasError: false, error: null, lastResetKey: props.resetKey };
+    }
+    return null;
+  }
+
+  handleReset() {
     this.setState({ hasError: false, error: null });
-  };
+  }
 
   render() {
     if (!this.state.hasError) return this.props.children;
@@ -37,10 +59,10 @@ export default class ErrorBoundary extends Component {
       return (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 text-destructive text-sm">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span className="flex-1">Something went wrong.</span>
+          <span className="flex-1 text-xs">Something went wrong.</span>
           <button
             onClick={this.handleReset}
-            className="text-xs underline hover:no-underline"
+            className="text-xs underline hover:no-underline flex-shrink-0"
           >
             Retry
           </button>
@@ -60,6 +82,11 @@ export default class ErrorBoundary extends Component {
           <p className="text-sm text-muted-foreground max-w-sm">
             {this.props.message || 'An unexpected error occurred. Please try again.'}
           </p>
+          {import.meta.env.DEV && this.state.error && (
+            <pre className="mt-3 text-left text-xs text-destructive/70 bg-destructive/5 rounded-lg p-3 max-w-sm overflow-auto">
+              {this.state.error.toString()}
+            </pre>
+          )}
         </div>
         <button
           onClick={this.handleReset}

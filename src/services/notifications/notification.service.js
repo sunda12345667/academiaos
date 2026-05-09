@@ -92,18 +92,6 @@ async function getUnreadCount(userId) {
   return unread.length;
 }
 
-/**
- * Subscribe to real-time notification updates
- * Future: Replace with WebSocket subscription via NestJS Gateway
- */
-function subscribeToNotifications(userId, callback) {
-  return base44.entities.Notification.subscribe((event) => {
-    if (event.data?.recipient_id === userId && event.type === 'create') {
-      callback(event.data);
-    }
-  });
-}
-
 export default {
   createNotification,
   getUnreadNotifications,
@@ -111,5 +99,6 @@ export default {
   markAsRead,
   markAllAsRead,
   getUnreadCount,
-  subscribeToNotifications,
+  // NOTE: Realtime subscription is handled exclusively via RealtimeBus in NotificationProvider.
+  // Do NOT add raw base44.entities.Notification.subscribe() calls anywhere in the app.
 };
