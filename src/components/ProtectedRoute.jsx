@@ -1,37 +1,29 @@
-import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
-const DefaultFallback = () => (
-  <div className="fixed inset-0 flex items-center justify-center">
-    <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-  </div>
-);
+export default function ProtectedRoute({ children, requireOnboarding = false }) {
+  const { isAuthenticated, isLoadingAuth, onboardingComplete } = useAuth();
 
-export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement }) {
-  const { isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth } = useAuth();
-
-  useEffect(() => {
-    if (!authChecked && !isLoadingAuth) {
-      checkUserAuth();
-    }
-  }, [authChecked, isLoadingAuth, checkUserAuth]);
-
-  if (isLoadingAuth || !authChecked) {
-    return fallback;
-  }
-
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    }
-    return unauthenticatedElement;
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          </div>
+          <p className="text-sm text-muted-foreground font-medium">Loading…</p>
+        </div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
-    return unauthenticatedElement;
+    return <Navigate to="/login" replace />;
   }
 
-  return <Outlet />;
+  if (requireOnboarding && !onboardingComplete) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return children;
 }

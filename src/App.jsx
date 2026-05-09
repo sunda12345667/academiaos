@@ -19,6 +19,13 @@ const Wallet        = lazy(() => import('@/pages/Wallet'));
 const Notifications = lazy(() => import('@/pages/Notifications'));
 const Profile       = lazy(() => import('@/pages/Profile'));
 const Create        = lazy(() => import('@/pages/Create'));
+const Login         = lazy(() => import('@/pages/Auth/Login'));
+const SchoolSelect  = lazy(() => import('@/pages/Onboarding/SchoolSelect'));
+const ProfileSetup  = lazy(() => import('@/pages/Onboarding/ProfileSetup'));
+const InterestSelect = lazy(() => import('@/pages/Onboarding/InterestSelect'));
+const OnboardingComplete = lazy(() => import('@/pages/Onboarding/Complete'));
+
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 
 // App-level splash loader (used before router is ready)
@@ -55,7 +62,17 @@ const AuthenticatedApp = () => {
       */}
       <Suspense fallback={<AppLoader />}>
         <Routes>
-          <Route element={<AppShell />}>
+          {/* Public Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          
+          {/* Onboarding Routes */}
+          <Route path="/onboarding/school" element={<ProtectedRoute><SchoolSelect /></ProtectedRoute>} />
+          <Route path="/onboarding/profile" element={<ProtectedRoute><ProfileSetup /></ProtectedRoute>} />
+          <Route path="/onboarding/interests" element={<ProtectedRoute><InterestSelect /></ProtectedRoute>} />
+          <Route path="/onboarding/complete" element={<ProtectedRoute><OnboardingComplete /></ProtectedRoute>} />
+
+          {/* Protected App Routes */}
+          <Route element={<ProtectedRoute requireOnboarding><AppShell /></ProtectedRoute>}>
             <Route path="/" element={<Home />} />
             <Route path="/learn" element={<Learn />} />
             <Route path="/groups" element={<Groups />} />
@@ -66,6 +83,7 @@ const AuthenticatedApp = () => {
             <Route path="/profile/:username" element={<Profile />} />
             <Route path="/create" element={<Create />} />
           </Route>
+
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </Suspense>

@@ -1,40 +1,69 @@
 {
   "name": "UserProfile",
   "type": "object",
+  "description": "Extended user profile with role, school, and personalization data",
   "properties": {
     "user_id": {
       "type": "string",
-      "description": "Reference to the base44 auth User ID"
-    },
-    "username": {
-      "type": "string",
-      "description": "Unique handle e.g. @john_doe"
+      "description": "Reference to base User entity"
     },
     "display_name": {
-      "type": "string"
-    },
-    "bio": {
-      "type": "string"
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 30
     },
     "avatar_url": {
       "type": "string"
     },
-    "cover_url": {
-      "type": "string"
+    "bio": {
+      "type": "string",
+      "maxLength": 150
     },
     "role": {
       "type": "string",
       "enum": [
         "student",
-        "educator",
+        "lecturer",
         "creator",
-        "admin",
-        "moderator",
-        "school_admin"
+        "school_admin",
+        "advertiser",
+        "moderator"
       ],
       "default": "student"
     },
-    "account_status": {
+    "school_id": {
+      "type": "string",
+      "description": "Reference to School entity"
+    },
+    "department": {
+      "type": "string",
+      "description": "Academic department/faculty"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "100",
+        "200",
+        "300",
+        "400",
+        "postgrad",
+        "staff"
+      ],
+      "description": "Academic level for students"
+    },
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Interest/hobby tags"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Email verified"
+    },
+    "status": {
       "type": "string",
       "enum": [
         "active",
@@ -42,79 +71,23 @@
         "banned",
         "pending_verification"
       ],
-      "default": "active"
+      "default": "pending_verification"
     },
-    "verification_status": {
-      "type": "string",
-      "enum": [
-        "unverified",
-        "email_verified",
-        "id_verified",
-        "educator_verified"
-      ],
-      "default": "unverified"
-    },
-    "academic_id": {
-      "type": "string",
-      "description": "Reference to AcademicIdentity entity"
-    },
-    "school_id": {
-      "type": "string",
-      "description": "Reference to School/Institution entity"
-    },
-    "follower_count": {
-      "type": "number",
-      "default": 0
-    },
-    "following_count": {
-      "type": "number",
-      "default": 0
-    },
-    "post_count": {
-      "type": "number",
-      "default": 0
-    },
-    "wallet_id": {
-      "type": "string",
-      "description": "Reference to Wallet entity"
-    },
-    "social_links": {
-      "type": "object",
-      "description": "External social links: {twitter, linkedin, github, website}"
-    },
-    "preferences": {
-      "type": "object",
-      "description": "User preferences: {notifications, privacy, theme, language}"
-    },
-    "is_creator": {
+    "onboarding_completed": {
       "type": "boolean",
       "default": false
     },
-    "creator_tier": {
-      "type": "string",
-      "enum": [
-        "none",
-        "basic",
-        "pro",
-        "enterprise"
-      ],
-      "default": "none"
-    },
-    "last_active": {
+    "onboarding_completed_at": {
       "type": "string",
       "format": "date-time"
     },
-    "country": {
-      "type": "string"
-    },
-    "timezone": {
-      "type": "string"
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [
     "user_id",
-    "username",
-    "display_name",
     "role"
   ]
 }
