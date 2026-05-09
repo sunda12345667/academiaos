@@ -1,0 +1,136 @@
+{
+  "name": "PayoutRequest",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "UserProfile ID requesting payout"
+    },
+    "wallet_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Requested amount in kobo"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "bank_code": {
+      "type": "string"
+    },
+    "account_number": {
+      "type": "string"
+    },
+    "account_name": {
+      "type": "string"
+    },
+    "bank_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "under_review",
+        "approved",
+        "processing",
+        "completed",
+        "failed",
+        "rejected",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "review_reason": {
+      "type": "string",
+      "description": "Reason for manual review flag"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "failure_reason": {
+      "type": "string"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Admin UserProfile ID who reviewed"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "gateway": {
+      "type": "string",
+      "enum": [
+        "paystack",
+        "flutterwave",
+        "manual"
+      ],
+      "default": "paystack"
+    },
+    "gateway_reference": {
+      "type": "string"
+    },
+    "gateway_response": {
+      "type": "object"
+    },
+    "platform_fee": {
+      "type": "number",
+      "default": 0,
+      "description": "Any withdrawal fee applied in kobo"
+    },
+    "net_amount": {
+      "type": "number",
+      "description": "Amount after fees actually sent to bank"
+    },
+    "transaction_id": {
+      "type": "string",
+      "description": "Linked Transaction ledger record"
+    },
+    "risk_score": {
+      "type": "number",
+      "default": 0,
+      "description": "0-100 fraud risk score at time of request"
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "e.g. ['new_bank_account', 'velocity_spike', 'kyc_none']"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "device_fingerprint": {
+      "type": "string"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Client-generated key to prevent duplicate payout submissions"
+    }
+  },
+  "required": [
+    "user_id",
+    "wallet_id",
+    "amount",
+    "currency",
+    "bank_code",
+    "account_number",
+    "account_name"
+  ]
+}

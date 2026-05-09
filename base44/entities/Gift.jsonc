@@ -1,0 +1,99 @@
+{
+  "name": "Gift",
+  "type": "object",
+  "properties": {
+    "sender_id": {
+      "type": "string",
+      "description": "UserProfile ID of the sender"
+    },
+    "recipient_id": {
+      "type": "string",
+      "description": "UserProfile ID of the recipient (creator)"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "LiveSession ID if sent during a live session"
+    },
+    "post_id": {
+      "type": "string",
+      "description": "Post ID if sent as post appreciation"
+    },
+    "gift_item_id": {
+      "type": "string",
+      "description": "GiftCatalogItem ID"
+    },
+    "gift_name": {
+      "type": "string",
+      "description": "Denormalized name at time of send"
+    },
+    "gift_emoji": {
+      "type": "string",
+      "description": "Display emoji for the gift"
+    },
+    "gift_animation_key": {
+      "type": "string",
+      "description": "Animation asset key for realtime rendering"
+    },
+    "coin_cost": {
+      "type": "number",
+      "description": "Platform coins spent (NOT naira directly)"
+    },
+    "naira_value": {
+      "type": "number",
+      "description": "Naira equivalent in kobo for ledger purposes"
+    },
+    "creator_naira_credit": {
+      "type": "number",
+      "description": "Amount credited to creator wallet in kobo (after platform cut)"
+    },
+    "platform_fee": {
+      "type": "number",
+      "description": "Platform cut in kobo"
+    },
+    "context": {
+      "type": "string",
+      "enum": [
+        "live_session",
+        "post_tip",
+        "appreciation",
+        "educational_reward",
+        "dm"
+      ],
+      "default": "live_session"
+    },
+    "message": {
+      "type": "string",
+      "description": "Optional message with the gift"
+    },
+    "is_anonymous": {
+      "type": "boolean",
+      "default": false
+    },
+    "transaction_id": {
+      "type": "string",
+      "description": "Linked Transaction record for ledger"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "delivered",
+        "refunded",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "animation_displayed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the gift animation was shown on stream"
+    }
+  },
+  "required": [
+    "sender_id",
+    "recipient_id",
+    "gift_item_id",
+    "coin_cost",
+    "context"
+  ]
+}

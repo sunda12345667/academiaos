@@ -1,0 +1,114 @@
+{
+  "name": "PaymentIntent",
+  "type": "object",
+  "description": "Tracks inbound payment attempts (deposits, course purchases, marketplace). Gateway-agnostic.",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "UserProfile ID initiating the payment"
+    },
+    "wallet_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount in kobo"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "purpose": {
+      "type": "string",
+      "enum": [
+        "wallet_topup",
+        "course_purchase",
+        "marketplace_purchase",
+        "subscription",
+        "gift_coin_purchase"
+      ],
+      "description": "What the payment is for"
+    },
+    "related_entity_type": {
+      "type": "string"
+    },
+    "related_entity_id": {
+      "type": "string"
+    },
+    "gateway": {
+      "type": "string",
+      "enum": [
+        "paystack",
+        "flutterwave",
+        "stripe"
+      ],
+      "default": "paystack"
+    },
+    "gateway_reference": {
+      "type": "string",
+      "description": "Unique ref sent to gateway (used for verification)"
+    },
+    "gateway_access_code": {
+      "type": "string",
+      "description": "Paystack/Flutterwave popup code"
+    },
+    "checkout_url": {
+      "type": "string",
+      "description": "Redirect URL returned by gateway"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "created",
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "expired",
+        "refunded"
+      ],
+      "default": "created"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When gateway webhook confirmed payment"
+    },
+    "verification_attempts": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times webhook/polling tried to verify"
+    },
+    "gateway_response": {
+      "type": "object",
+      "description": "Full raw response from gateway (audit)"
+    },
+    "transaction_id": {
+      "type": "string",
+      "description": "Linked Transaction ledger record (set after completion)"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Client key to prevent duplicate payment intent creation"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this payment intent expires (typically 30min)"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "user_id",
+    "amount",
+    "currency",
+    "purpose",
+    "gateway",
+    "gateway_reference"
+  ]
+}

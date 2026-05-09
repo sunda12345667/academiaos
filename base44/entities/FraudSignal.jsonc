@@ -1,0 +1,97 @@
+{
+  "name": "FraudSignal",
+  "type": "object",
+  "description": "Fraud and abuse detection events. Written by the risk engine, read by compliance/admin.",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "UserProfile ID flagged"
+    },
+    "signal_type": {
+      "type": "string",
+      "enum": [
+        "velocity_spike",
+        "unusual_withdrawal",
+        "new_bank_account_withdrawal",
+        "multiple_failed_payments",
+        "kyc_mismatch",
+        "account_takeover_suspected",
+        "self_gifting_detected",
+        "coordinated_gift_abuse",
+        "chargeback_received",
+        "rapid_account_creation",
+        "suspicious_login",
+        "unusual_ip",
+        "device_fingerprint_change",
+        "high_value_gift",
+        "withdrawal_velocity",
+        "balance_manipulation_attempt"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "related_transaction_id": {
+      "type": "string"
+    },
+    "related_entity_type": {
+      "type": "string",
+      "description": "transaction, gift, payout_request, etc."
+    },
+    "related_entity_id": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "description": "Raw signal data (amounts, counts, thresholds, context)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "under_review",
+        "resolved_false_positive",
+        "resolved_actioned",
+        "escalated"
+      ],
+      "default": "open"
+    },
+    "auto_action_taken": {
+      "type": "string",
+      "description": "e.g. 'wallet_frozen', 'payout_blocked', 'flagged_for_review'"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Admin UserProfile ID"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "device_fingerprint": {
+      "type": "string"
+    },
+    "risk_score": {
+      "type": "number",
+      "description": "0-100 composite risk score at time of signal"
+    }
+  },
+  "required": [
+    "user_id",
+    "signal_type",
+    "severity"
+  ]
+}

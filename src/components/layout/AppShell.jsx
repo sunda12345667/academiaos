@@ -21,6 +21,7 @@ import ErrorBoundary from '@/lib/errors/ErrorBoundary';
 import AccountStatusGuard from '@/components/auth/AccountStatusGuard';
 import { MessagingProvider } from '@/providers/MessagingProvider';
 import { LiveSessionProvider } from '@/providers/LiveSessionProvider';
+import { WalletProvider } from '@/providers/WalletProvider';
 
 function PageLoader() {
   return (
@@ -39,6 +40,7 @@ export default function AppShell() {
       <NotificationProvider profileId={profile?.id}>
         <AccountStatusGuard>
         <MessagingProvider>
+        <WalletProvider>
         <LiveSessionProvider>
         <div className="flex h-screen bg-background overflow-hidden">
           {/* Desktop Left Sidebar — hidden on mobile */}
@@ -77,6 +79,7 @@ export default function AppShell() {
           </aside>
         </div>
         </LiveSessionProvider>
+        </WalletProvider>
         </MessagingProvider>
         </AccountStatusGuard>
       </NotificationProvider>

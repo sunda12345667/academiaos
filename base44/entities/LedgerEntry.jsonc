@@ -1,0 +1,81 @@
+{
+  "name": "LedgerEntry",
+  "type": "object",
+  "description": "Immutable double-entry ledger. Every financial event creates two entries (debit one account, credit another). Never deleted or updated \u2014 reversal creates new entries.",
+  "properties": {
+    "transaction_id": {
+      "type": "string",
+      "description": "Parent Transaction ID this entry belongs to"
+    },
+    "wallet_id": {
+      "type": "string",
+      "description": "Which wallet account this affects"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "debit",
+        "credit"
+      ],
+      "description": "Debit reduces balance, credit increases"
+    },
+    "account_type": {
+      "type": "string",
+      "enum": [
+        "user_available",
+        "user_locked",
+        "user_bonus",
+        "platform_revenue",
+        "platform_escrow",
+        "creator_earnings",
+        "payout_pending",
+        "gift_pool"
+      ],
+      "description": "Which sub-account within the wallet is affected"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount in kobo (always positive)"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "running_balance": {
+      "type": "number",
+      "description": "Balance of this account_type after this entry (denormalized for audit speed)"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "string",
+      "description": "Same reference as parent Transaction"
+    },
+    "is_reversal": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this entry is a reversal of a previous entry"
+    },
+    "reversed_entry_id": {
+      "type": "string",
+      "description": "ID of the original entry being reversed"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "transaction_id",
+    "wallet_id",
+    "user_id",
+    "entry_type",
+    "account_type",
+    "amount",
+    "currency",
+    "reference"
+  ]
+}
