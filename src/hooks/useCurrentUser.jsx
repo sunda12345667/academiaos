@@ -1,9 +1,9 @@
 /**
- * useCurrentUser Hook
- * 
- * Single source of truth for the authenticated user + profile.
+ * useCurrentUser Hook + UserProvider
+ *
+ * Single source of truth for authenticated user + profile.
  * All components use this — never call auth/profile directly.
- * 
+ *
  * Migration note: On NestJS migration, the auth source changes
  * but this hook interface remains identical.
  */
@@ -16,25 +16,21 @@ import { hasPermission, roleAtLeast } from '@/services/auth/permissions';
 const UserContext = createContext(null);
 
 export function UserProvider({ children }) {
-  const [user, setUser] = useState(null);          // base44 auth user
-  const [profile, setProfile] = useState(null);    // UserProfile entity
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    initUser();
-  }, []);
+  useEffect(() => { initUser(); }, []);
 
   async function initUser() {
     try {
       setLoading(true);
       const authUser = await base44.auth.me();
       setUser(authUser);
-
       if (authUser) {
         let userProfile = await userService.getProfileByUserId(authUser.id);
         if (!userProfile) {
-          // First login — create profile
           userProfile = await userService.createProfile(authUser.id, {
             full_name: authUser.full_name,
             email: authUser.email,
@@ -63,7 +59,6 @@ export function UserProvider({ children }) {
     return updated;
   }
 
-  // Permission helper — available to all consumers
   function can(permission) {
     if (!profile) return false;
     return hasPermission(profile.role, permission);
@@ -80,15 +75,9 @@ export function UserProvider({ children }) {
 
   return (
     <UserContext.Provider value={{
-      user,
-      profile,
-      loading,
-      error,
-      refreshProfile,
-      updateProfile,
-      can,
-      isRole,
-      isAtLeastRole,
+      user, profile, loading, error,
+      refreshProfile, updateProfile,
+      can, isRole, isAtLeastRole,
       isAuthenticated: !!user,
       isProfileComplete: !!profile,
     }}>

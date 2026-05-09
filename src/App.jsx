@@ -1,47 +1,76 @@
-import { Toaster } from "@/components/ui/toaster"
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClientInstance } from '@/lib/query-client'
+import { Toaster } from "@/components/ui/toaster";
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+import { UserProvider } from '@/hooks/useCurrentUser';
+import AppShell from '@/components/layout/AppShell';
+
+// Route-level code splitting — each page is a separate bundle chunk
+const Home         = lazy(() => import('@/pages/Home'));
+const Learn        = lazy(() => import('@/pages/Learn'));
+const Groups       = lazy(() => import('@/pages/Groups'));
+const Marketplace  = lazy(() => import('@/pages/Marketplace'));
+const Wallet       = lazy(() => import('@/pages/Wallet'));
+const Notifications = lazy(() => import('@/pages/Notifications'));
+const Profile      = lazy(() => import('@/pages/Profile'));
+const Create       = lazy(() => import('@/pages/Create'));
+
+// Route-level loading fallback
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-6 h-6 border-2 border-border border-t-primary rounded-full animate-spin" />
+    </div>
+  );
+}
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          </div>
+          <p className="text-sm text-muted-foreground font-medium">Loading StudentOS…</p>
+        </div>
       </div>
     );
   }
 
-  // Handle authentication errors
   if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
-    }
+    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
+    if (authError.type === 'auth_required') { navigateToLogin(); return null; }
   }
 
-  // Render the main app
   return (
-    <Routes>
-      {/* Add your page Route elements here */}
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+    <UserProvider>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/learn" element={<Learn />} />
+            <Route path="/groups" element={<Groups />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/wallet" element={<Wallet />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:username" element={<Profile />} />
+          </Route>
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Suspense>
+    </UserProvider>
   );
 };
 
-
-function App() {
-
+export default function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
@@ -51,7 +80,5 @@ function App() {
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
-  )
+  );
 }
-
-export default App
