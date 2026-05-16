@@ -37,42 +37,43 @@ export default function Home() {
   const firstName = profile?.display_name?.split(' ')[0] || 'Alex';
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto w-full">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full pb-24 lg:pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-primary uppercase tracking-widest">WELCOME BACK, {firstName.toUpperCase()}</p>
-          <h1 className="font-jakarta font-bold text-3xl text-foreground mt-0.5">Daily Overview</h1>
+          <h1 className="font-jakarta font-bold text-2xl sm:text-3xl text-foreground mt-0.5">Daily Overview</h1>
         </div>
-        <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer">
+        <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold cursor-pointer shrink-0">
           <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-          12 New Notes Today
+          <span className="hidden sm:inline">12 New Notes Today</span>
+          <span className="sm:hidden">12 New</span>
         </Badge>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {[
           { icon: Upload, label: 'Upload Note' },
           { icon: HelpCircle, label: 'Ask Question' },
           { icon: Smartphone, label: 'Recharge' },
         ].map(({ icon: Icon, label }) => (
-          <button key={label} className="flex items-center justify-center gap-2.5 p-4 bg-white border border-border rounded-2xl hover:bg-muted/50 transition-all active:scale-95">
+          <button key={label} className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2.5 p-3 sm:p-4 bg-white border border-border rounded-2xl hover:bg-muted/50 transition-all active:scale-95">
             <Icon className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">{label}</span>
+            <span className="text-[11px] sm:text-sm font-medium text-foreground text-center leading-tight">{label}</span>
           </button>
         ))}
       </div>
 
       {/* Wallet + Streak Row */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Wallet */}
-        <div className="bg-primary rounded-2xl p-5 text-white col-span-1">
+        <div className="bg-primary rounded-2xl p-4 sm:p-5 text-white">
           <p className="text-xs font-medium text-white/70 uppercase tracking-wide mb-1">Wallet Balance</p>
           {walletLoading ? (
             <Skeleton className="h-9 w-36 bg-white/20 mb-4" />
           ) : (
-            <p className="font-jakarta font-bold text-2xl tracking-tight mb-4">
+            <p className="font-jakarta font-bold text-2xl sm:text-2xl tracking-tight mb-4">
               {formatAmount(balance.available)}
             </p>
           )}
@@ -87,7 +88,7 @@ export default function Home() {
         </div>
 
         {/* Study Streak */}
-        <div className="bg-white border border-border rounded-2xl p-5">
+        <div className="bg-white border border-border rounded-2xl p-4 sm:p-5">
           <p className="text-sm font-semibold text-foreground mb-1">Study Streak</p>
           <div className="flex items-baseline gap-1.5 mb-1">
             <span className="font-jakarta font-bold text-4xl text-foreground">{streak}</span>
@@ -103,7 +104,7 @@ export default function Home() {
       </div>
 
       {/* Today's Tasks */}
-      <div className="bg-white border border-border rounded-2xl p-5">
+      <div className="bg-white border border-border rounded-2xl p-4 sm:p-5">
         <h2 className="font-jakarta font-semibold text-base text-foreground mb-4">Today's Tasks</h2>
         <div className="space-y-4">
           {tasks.map(task => (
@@ -112,7 +113,7 @@ export default function Home() {
                 ? <CheckSquare className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 : <Square className="w-5 h-5 text-border flex-shrink-0 mt-0.5" />
               }
-              <div>
+              <div className="min-w-0">
                 <p className={`text-sm font-medium ${task.done ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{task.label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{task.meta}</p>
               </div>
@@ -124,10 +125,10 @@ export default function Home() {
       {/* Trending Notes */}
       <div>
         <h2 className="font-jakarta font-semibold text-base text-foreground mb-3">Trending in CSC 301</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {TRENDING_NOTES.map((note, i) => (
-            <div key={i} className="bg-white border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow group">
-              <div className="relative h-32 overflow-hidden">
+            <div key={i} className="bg-white border border-border rounded-2xl overflow-hidden cursor-pointer hover:shadow-md transition-shadow group flex sm:block">
+              <div className="relative w-28 sm:w-auto h-auto sm:h-32 flex-shrink-0 overflow-hidden">
                 <img src={note.img} alt={note.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute top-2 left-2 flex gap-1">
@@ -135,9 +136,9 @@ export default function Home() {
                   {note.tag2 && <span className="text-[9px] font-bold bg-primary text-white px-1.5 py-0.5 rounded uppercase tracking-wide">{note.tag2}</span>}
                 </div>
               </div>
-              <div className="p-3">
+              <div className="p-3 flex-1 min-w-0">
                 <h3 className="font-semibold text-sm text-foreground line-clamp-1">{note.title}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{note.desc}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 sm:line-clamp-1">{note.desc}</p>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-sm font-bold text-primary">{note.price}</span>
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
