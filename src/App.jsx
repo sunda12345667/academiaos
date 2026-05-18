@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { UserProvider } from '@/hooks/useCurrentUser';
 import AppShell from '@/components/layout/AppShell';
 import ErrorBoundary from '@/lib/errors/ErrorBoundary';
@@ -43,14 +42,9 @@ function AppLoader() {
 }
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth } = useAuth();
 
-  if (isLoadingPublicSettings || isLoadingAuth) return <AppLoader />;
-
-  if (authError) {
-    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
-    if (authError.type === 'auth_required') { navigateToLogin(); return null; }
-  }
+  if (isLoadingAuth) return <AppLoader />;
 
   return (
     // UserProvider is above AppShell so profile is available when AppShell mounts providers

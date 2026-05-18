@@ -1,8 +1,8 @@
-import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 
+// Simply renders children — Base44 platform handles login redirect automatically
 export default function ProtectedRoute({ children, requireOnboarding = false }) {
-  const { isAuthenticated, isLoadingAuth, onboardingComplete } = useAuth();
+  const { isLoadingAuth } = useAuth();
 
   if (isLoadingAuth) {
     return (
@@ -11,18 +11,10 @@ export default function ProtectedRoute({ children, requireOnboarding = false }) 
           <div className="w-10 h-10 rounded-2xl gradient-brand flex items-center justify-center">
             <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
           </div>
-          <p className="text-sm text-muted-foreground font-medium">Loading…</p>
+          <p className="text-sm text-muted-foreground font-medium">Loading StudentOS…</p>
         </div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requireOnboarding && !onboardingComplete) {
-    return <Navigate to="/onboarding" replace />;
   }
 
   return children;
