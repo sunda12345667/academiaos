@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShieldAlert, CreditCard,
-  Megaphone, FileText, Settings, ChevronRight, AlertTriangle
+  Megaphone, FileText, TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/admin/moderation', icon: ShieldAlert,     label: 'Moderation' },
   { to: '/admin/payouts',    icon: CreditCard,      label: 'Payouts' },
   { to: '/admin/ads',        icon: Megaphone,       label: 'Ad Campaigns' },
+  { to: '/admin/commission', icon: TrendingUp,      label: 'Commission' },
   { to: '/admin/audit',      icon: FileText,        label: 'Audit Log' },
 ];
 

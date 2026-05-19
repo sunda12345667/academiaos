@@ -30,6 +30,7 @@ const AdminModeration  = lazy(() => import('@/pages/Admin/Moderation'));
 const AdminPayouts     = lazy(() => import('@/pages/Admin/Payouts'));
 const AdminAdCampaigns = lazy(() => import('@/pages/Admin/AdCampaigns'));
 const AdminAuditLog    = lazy(() => import('@/pages/Admin/AuditLog'));
+const AdminCommission  = lazy(() => import('@/pages/Admin/Commission'));
 
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
             <Route path="payouts" element={<AdminPayouts />} />
             <Route path="ads" element={<AdminAdCampaigns />} />
             <Route path="audit" element={<AdminAuditLog />} />
+            <Route path="commission" element={<AdminCommission />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />
