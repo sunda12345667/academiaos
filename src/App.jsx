@@ -23,6 +23,13 @@ const SchoolSelect  = lazy(() => import('@/pages/Onboarding/SchoolSelect'));
 const ProfileSetup  = lazy(() => import('@/pages/Onboarding/ProfileSetup'));
 const InterestSelect = lazy(() => import('@/pages/Onboarding/InterestSelect'));
 const OnboardingComplete = lazy(() => import('@/pages/Onboarding/Complete'));
+const AdminDashboard   = lazy(() => import('@/pages/Admin/Dashboard'));
+const AdminOverview    = lazy(() => import('@/pages/Admin/Overview'));
+const AdminUsers       = lazy(() => import('@/pages/Admin/Users'));
+const AdminModeration  = lazy(() => import('@/pages/Admin/Moderation'));
+const AdminPayouts     = lazy(() => import('@/pages/Admin/Payouts'));
+const AdminAdCampaigns = lazy(() => import('@/pages/Admin/AdCampaigns'));
+const AdminAuditLog    = lazy(() => import('@/pages/Admin/AuditLog'));
 
 import ProtectedRoute from '@/components/ProtectedRoute';
 
@@ -76,6 +83,16 @@ const AuthenticatedApp = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:username" element={<Profile />} />
             <Route path="/create" element={<Create />} />
+          </Route>
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>}>
+            <Route index element={<AdminOverview />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="moderation" element={<AdminModeration />} />
+            <Route path="payouts" element={<AdminPayouts />} />
+            <Route path="ads" element={<AdminAdCampaigns />} />
+            <Route path="audit" element={<AdminAuditLog />} />
           </Route>
 
           <Route path="*" element={<PageNotFound />} />
